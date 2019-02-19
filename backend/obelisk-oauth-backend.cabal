@@ -1,0 +1,26 @@
+cabal-version: 2.0
+name: obelisk-oauth-backend
+version: 0.1.0.0
+synopsis: OAuth helpers for Obelisk backends
+description: OAuth helpers for Obelisk backends
+license: BSD3
+license-file: LICENSE
+author: Obsidian Systems LLC
+maintainer: maintainer@obsidian.systems
+copyright: 2019 Obsidian Systems LLC
+category: Web
+build-type: Simple
+
+library
+  exposed-modules:
+    Obelisk.OAuth.AccessToken
+  other-extensions: OverloadedStrings
+  build-depends:
+    base >=4.11,
+    bytestring >=0.10,
+    http-client,
+    obelisk-oauth-common,
+    obelisk-route,
+    text >=1.2
+  default-language: Haskell2010
+  ghc-options: -Wall
