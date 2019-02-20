@@ -52,7 +52,7 @@ import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import           GHC.Generics                  (Generic)
 
-import           Obelisk.OAuth.Route           (OAuth (..), OAuthClientId (..),
+import           Obelisk.OAuth.Route           (OAuthRoute (..), OAuthClientId (..),
                                                 redirectUriParamsEncoder)
 import           Obelisk.OAuth.State           (OAuthState, oAuthStateAsText)
 import           Obelisk.Route
@@ -79,7 +79,10 @@ import           Obelisk.Route
 -- <https://tools.ietf.org/html/rfc6749#section-10.16 10.16> of the
 -- specification.
 data AuthorizationResponseType
-  = AuthorizationResponseType_Code -- ^ Authorization grant
+  = AuthorizationResponseType_Code
+    -- ^ Authorization grant, this is the recommend way and the one this
+    -- library was actually tested with. TODO: Should we
+    -- maybe just get rid of `AuthorizationResponseType` entirely?
   | AuthorizationResponseType_Token -- ^ Implicit grant
   deriving (Show, Read, Eq, Ord, Generic)
 
@@ -95,7 +98,7 @@ data AuthorizationRequest r = AuthorizationRequest
     -- ^ The client application identifier, issued by the authorization server.
     -- See section <https://tools.ietf.org/html/rfc6749#section-2.2 of the
     -- spec.
-  , _authorizationRequest_redirectUri  :: Maybe (r (R OAuth))
+  , _authorizationRequest_redirectUri  :: Maybe (r (R OAuthRoute))
     -- ^ The client application's callback URI, where it expects to receive the
     -- authorization code. See section
     -- <https://tools.ietf.org/html/rfc6749#section-3.1.2 3.1.2> of the spec.
@@ -111,7 +114,7 @@ data AuthorizationRequest r = AuthorizationRequest
   }
   deriving (Generic)
 
-deriving instance (Show (r (R OAuth))) => Show (AuthorizationRequest r)
+deriving instance (Show (r (R OAuthRoute))) => Show (AuthorizationRequest r)
 
 
 -- | Render the authorization request.
@@ -170,7 +173,7 @@ authorizationRequestParams route enc ar = encode (queryParametersTextEncoder @Id
 renderRedirectUri
   :: Text -- ^ Application base url
   -> Encoder Identity Identity (R (Sum br a)) PageName -- ^ Checked backend route encoder
-  -> br (R OAuth) -- ^ OAuth parent route
+  -> br (R OAuthRoute) -- ^ OAuth parent route
   -> Text -- ^ Rendered redirect url
 renderRedirectUri base enc = (base <>) . renderRedirectUriRoute enc
 
@@ -181,7 +184,7 @@ renderRedirectUri base enc = (base <>) . renderRedirectUriRoute enc
 renderRedirectUriRoute
   :: Encoder Identity Identity (R (Sum br a)) PageName
      -- ^ Checked backend route encoder
-  -> br (R OAuth)
+  -> br (R OAuthRoute)
      -- ^ OAuth parent route
   -> Text
      -- ^ Rendered route

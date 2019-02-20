@@ -67,16 +67,24 @@ data RedirectUriParams = RedirectUriParams
 
 
 -- | The OAuth routes necessary for authorization code grants. This should be
---   made a sub-route of the client application.
-data OAuth :: * -> * where
-  OAuth_RedirectUri :: OAuth (Maybe RedirectUriParams)
+--   made a sub-route of the client application both in frontend routes _and_
+--   backend routes.
+--
+-- The frontend route will be used for the redirect coming from the
+-- authorization server. The backend route is needed, so the frontend can
+-- request the backend to retrieve the actual access token given the
+-- transmitted authorization code. This extra step is needed as only the
+-- backend can and should know the client secret needed for retrieving the
+-- actual access token.
+data OAuthRoute :: * -> * where
+  OAuthRoute_TransmitCode :: OAuthFrontend RedirectUriParams
 
 
 -- | The 'Encoder' of the 'OAuth' route. This should be used by the client
 --   app's frontend route encoder.
 oauthRouteEncoder
   :: (MonadError Text check, MonadError Text parse)
-  => Encoder check parse (R OAuth) PageName
+  => Encoder check parse (R OAuthRoute) PageName
 oauthRouteEncoder = pathComponentEncoder $ \case
   OAuth_RedirectUri -> PathSegment "redirect" redirectUriParamsEncoder
 
