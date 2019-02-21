@@ -27,8 +27,6 @@ example.
 module Obelisk.OAuth.Request
   ( -- * Types and classes
     AuthorizationResponseType (..)
-  , AuthorizationRequest (..)
-    -- * Useful re-exported types
   , OAuthClientId (..)
   , OAuthState
     -- * Build actual request
@@ -50,65 +48,27 @@ import           Data.Functor.Sum      (Sum (..))
 import qualified Data.Map              as Map
 import           Data.Text             (Text)
 import qualified Data.Text             as T
-import           GHC.Generics          (Generic)
 
 import           Obelisk.OAuth.Route   (OAuthClientId (..), OAuthRoute (..),
                                         redirectUriParamsEncoder)
 import           Obelisk.OAuth.State   (OAuthState, oAuthStateAsText)
 import           Obelisk.Route
 
-import           Obelisk.OAuth.Config  (AuthorizationResponseType (..))
-
-
--- | Fields of the authorization request, which will ultimately become query
--- string parameters. Described in section
--- <https://tools.ietf.org/html/rfc6749#section-4.1.1 4.11> of the
--- specification.
-data AuthorizationRequest r = AuthorizationRequest
-  { _authorizationRequest_responseType :: AuthorizationResponseType
-    -- ^ The type of authorization grant being requested. See 'AuthorizationResponseType'.
-  , _authorizationRequest_clientId     :: OAuthClientId
-    -- ^ The client application identifier, issued by the authorization server.
-    -- See section <https://tools.ietf.org/html/rfc6749#section-2.2 of the
-    -- spec.
-  , _authorizationRequest_redirectUri  :: Maybe (r (R OAuthRoute))
-    -- ^ The client application's callback URI, where it expects to receive the
-    -- authorization code. See section
-    -- <https://tools.ietf.org/html/rfc6749#section-3.1.2 3.1.2> of the spec.
-    -- The @r@ represents the client application route of which the OAuth route
-    -- will be a sub-route.
-  , _authorizationRequest_scope        :: [Text]
-    -- ^ See section <https://tools.ietf.org/html/rfc6749#section-3.3 3.3>,
-    -- "Access Token Scope"
-  , _authorizationRequest_state        :: OAuthState
-    -- ^ This value will be returned to the client application when the
-    -- resource server redirects the user to the redirect URI. See section
-    -- <https://tools.ietf.org/html/rfc6749#section-10.12 10.12>.
-  }
-  deriving (Generic)
-
-deriving instance (Show (r (R OAuthRoute))) => Show (AuthorizationRequest r)
+import           Obelisk.OAuth.Config  (AuthorizationResponseType (..),
+                                        OAuthConfigPublic, OAuthConfigV (..))
 
 
 -- | Render the authorization request.
 --
 --   This should be all you need from this module in most cases.
 authorizationRequestHref
-  :: Text
-     -- ^ API request URL - the URL of the authorization server, e.g. github.
-  -> Text
-     -- ^ Base application route URL - something like
-     -- `https://your-app.com` - used for building up the redirect url that gets passed
-     -- to the authorization server. In an Obelisk application, this will be
-     -- the contents of config/common/route.
-  -> Encoder Identity Identity (R (Sum br a)) PageName -- ^ Backend route encoder
-  -> AuthorizationRequest br
-     -- ^ The actual request that is used for building up the needed query
-     -- parameters for the request.
+  :: Encoder Identity Identity (R (Sum r a)) PageName -- ^ Backend route encoder
+  -> OAuthConfigPublic r -- ^ Configuration for building up request.
+  -> OAuthState -- ^ The state for building the request URI.
   -> Text
      -- ^ Authorization grant request endpoint with query string
-authorizationRequestHref reqUrl appUrl enc ar =
-  reqUrl <> "?" <> authorizationRequestParams appUrl enc ar
+authorizationRequestHref enc cfg state =
+  _oAuthConfig_providerUri cfg <> "?" <> authorizationRequestParams enc cfg state
 
 
 -- | Turn an 'AuthorizationRequest' into query string parameters separated by
@@ -117,47 +77,46 @@ authorizationRequestHref reqUrl appUrl enc ar =
 -- <https://tools.ietf.org/html/rfc6749#section-4.1.1 4.1.1> of the
 -- specification.  This does not insert a leading @?@.
 authorizationRequestParams
-  :: Text
-     -- ^ Base URL for building redirect URI (`_autorizationRequest_redirectUri`).
-  -> Encoder Identity Identity (R (Sum br a)) PageName
-     -- ^ Encoder for `_autorizationRequest_redirectUri`
-  -> AuthorizationRequest br
-     -- ^ Request to build query parameters with.
+  :: Encoder Identity Identity (R (Sum r a)) PageName
+     -- ^ Encoder for `_oAuthConfig_redirectUri`
+  -> OAuthConfigPublic r
+     -- ^ Configruation for building parameters
+  -> OAuthState
   -> Text
-authorizationRequestParams route enc ar = encode (queryParametersTextEncoder @Identity @Identity) $
+authorizationRequestParams enc cfg state = encode (queryParametersTextEncoder @Identity @Identity) $
   Map.toList $ fmap Just $ mconcat
-    [ Map.singleton "response_type" $ case _authorizationRequest_responseType ar of
+    [ Map.singleton "response_type" $ case _oAuthConfig_responseType cfg of
         AuthorizationResponseType_Code  -> "code"
         AuthorizationResponseType_Token -> "token"
-    , Map.singleton "client_id" (unOAuthClientId . _authorizationRequest_clientId $ ar)
-    , case _authorizationRequest_redirectUri ar of
+    , Map.singleton "client_id" (unOAuthClientId . _oAuthConfig_clientId $ cfg)
+    , case _oAuthConfig_redirectUri cfg of
         Nothing -> Map.empty
-        Just r -> Map.singleton "redirect_uri" $
-          renderRedirectUri route enc r
-    , case _authorizationRequest_scope ar of
+        Just (b, r) -> Map.singleton "redirect_uri" $
+          renderRedirectUri enc b r
+    , case _oAuthConfig_scope cfg of
         [] -> Map.empty
         xs -> Map.singleton "scope" $ T.intercalate " " xs
-    , Map.singleton "state" (oAuthStateAsText . _authorizationRequest_state $ ar)
+    , Map.singleton "state" (oAuthStateAsText state)
     ]
 
 
 -- | Given the base URL  of the client application, a checked backend route
 --   encoder (see 'checkEncoder'), render the redirect URI.
 renderRedirectUri
-  :: Text -- ^ Application base url
-  -> Encoder Identity Identity (R (Sum br a)) PageName -- ^ Checked backend route encoder
-  -> br (R OAuthRoute) -- ^ OAuth parent route
+  :: Encoder Identity Identity (R (Sum r a)) PageName -- ^ Checked backend route encoder
+  -> Text -- ^ Application base url
+  -> r (R OAuthRoute) -- ^ OAuth parent route
   -> Text -- ^ Rendered redirect url
-renderRedirectUri base enc = (base <>) . renderRedirectUriRoute enc
+renderRedirectUri enc base = (base <>) . renderRedirectUriRoute enc
 
 
 -- | Given a checked backend route encoder (see 'checkEncoder'), and the
 --   app-specific parent route under which the OAuth routes are nested, construct
 --   the redirect URI's route (i.e., the path and query string parts).
 renderRedirectUriRoute
-  :: Encoder Identity Identity (R (Sum br a)) PageName
+  :: Encoder Identity Identity (R (Sum r a)) PageName
      -- ^ Checked backend route encoder
-  -> br (R OAuthRoute)
+  -> r (R OAuthRoute)
      -- ^ OAuth parent route
   -> Text
      -- ^ Rendered route
