@@ -7,6 +7,9 @@
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+
 {-| Configuration for an OAuth service.
 
   The configuration can be read from disk via "Obelisk.ExecutableConfig" and
@@ -29,16 +32,16 @@ module Obelisk.OAuth.Config
   , getOAuthConfigPrivate
   ) where
 
-import Data.Text
-import qualified Data.Text as T
-import GHC.Generics (Generic)
-import Data.Aeson (ToJSON, FromJSON)
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad.IO.Class   (MonadIO, liftIO)
+import           Data.Aeson               (FromJSON, ToJSON)
+import           Data.Text
+import qualified Data.Text                as T
+import           GHC.Generics             (Generic)
 
 import qualified Obelisk.ExecutableConfig
-import Obelisk.Route (R)
+import           Obelisk.Route            (R)
 
-import Obelisk.OAuth.Route
+import           Obelisk.OAuth.Route
 
 -- | The secret needed for actually retrieving the access token.
 --
@@ -75,7 +78,7 @@ data AuthorizationResponseType
     -- ^ Authorization grant, this is the recommend way and the one this
     -- library was actually tested with. TODO: Should we
     -- maybe just get rid of `AuthorizationResponseType` entirely?
-  | AuthorizationResponseType_Token -- ^ Implicit grant
+  | AuthorizationResponseType_Token -- ^ Implicit grant - TODO: Test this!
   deriving (Show, Read, Eq, Ord, Generic)
 
 
@@ -104,7 +107,8 @@ data OAuthConfigV secret r = OAuthConfig
     --
   , _oAuthConfig_redirectUri  :: Maybe (Text, r (R OAuthRoute))
     -- ^ `fst` is scheme and host to build full redirect URI. Usually contents of
-    -- `config/common/route`.
+    -- `config/common/route`. Something like: "https://yourapp.com".
+    -- See <https://tools.ietf.org/html/rfc6749#section-3.1.2 3.1.2> of the spec.
   , _oAuthConfig_scope        :: [Text]
     -- ^ The OAuth scopes to request. See
     -- <https://tools.ietf.org/html/rfc6749#section-3.3 Section 3.3>.
@@ -115,6 +119,10 @@ data OAuthConfigV secret r = OAuthConfig
     -- ^ The < https://tools.ietf.org/html/rfc6749#section-2.3 client secret>
     -- used by the backend to authenticate to the authorization server.
   }
+  deriving Generic
+
+deriving instance (Show (r (R OAuthRoute)), Show secret) => Show (OAuthConfigV secret r)
+
 
 -- | `OAuthConfigV` with client secret - for backend.
 type OAuthConfigPrivate r = OAuthConfigV OAuthClientSecret r
