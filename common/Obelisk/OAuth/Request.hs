@@ -42,49 +42,22 @@ module Obelisk.OAuth.Request
   , redirectUriParamsEncoder
   ) where
 
-import           Prelude                       hiding ((.))
+import           Prelude               hiding ((.))
 
-import           Control.Category              ((.))
-import           Data.Functor.Identity         (Identity (..))
-import           Data.Functor.Sum              (Sum (..))
-import qualified Data.Map                      as Map
-import           Data.Text                     (Text)
-import qualified Data.Text                     as T
-import           GHC.Generics                  (Generic)
+import           Control.Category      ((.))
+import           Data.Functor.Identity (Identity (..))
+import           Data.Functor.Sum      (Sum (..))
+import qualified Data.Map              as Map
+import           Data.Text             (Text)
+import qualified Data.Text             as T
+import           GHC.Generics          (Generic)
 
-import           Obelisk.OAuth.Route           (OAuthRoute (..), OAuthClientId (..),
-                                                redirectUriParamsEncoder)
-import           Obelisk.OAuth.State           (OAuthState, oAuthStateAsText)
+import           Obelisk.OAuth.Route   (OAuthClientId (..), OAuthRoute (..),
+                                        redirectUriParamsEncoder)
+import           Obelisk.OAuth.State   (OAuthState, oAuthStateAsText)
 import           Obelisk.Route
 
--- | The desired response type indicates to the authorization server what type
---   of authorization grant the client application is requesting.
---
--- The "code" response type is used to request an "authorization code" that can
--- be exchanged for an access token and is appropriate when the client
--- application has a backend (because the token exchange API requires access to
--- the client secret).  See section
--- <https://tools.ietf.org/html/rfc6749#section-1.3.1 1.3.1> of the
--- specification.
---
--- The "token" response type is used to request an "implicit grant" of an
--- access token, without authenticating the client application (though the
--- user/resource owner must, of course, still approve). See section
--- <https://tools.ietf.org/html/rfc6749#section-1.3.2 1.3.2> of the
--- specification.
---
--- The implicit grant flow sends the access token is directly to the frontend
--- app as a URI fragment. For security implications, see sections
--- <https://tools.ietf.org/html/rfc6749#section-10.3 10.3> and
--- <https://tools.ietf.org/html/rfc6749#section-10.16 10.16> of the
--- specification.
-data AuthorizationResponseType
-  = AuthorizationResponseType_Code
-    -- ^ Authorization grant, this is the recommend way and the one this
-    -- library was actually tested with. TODO: Should we
-    -- maybe just get rid of `AuthorizationResponseType` entirely?
-  | AuthorizationResponseType_Token -- ^ Implicit grant
-  deriving (Show, Read, Eq, Ord, Generic)
+import           Obelisk.OAuth.Config  (AuthorizationResponseType (..))
 
 
 -- | Fields of the authorization request, which will ultimately become query
@@ -189,4 +162,4 @@ renderRedirectUriRoute
   -> Text
      -- ^ Rendered route
 renderRedirectUriRoute enc r =
-  renderBackendRoute enc $ r :/ OAuth_RedirectUri :/ Nothing
+  renderBackendRoute enc $ r :/ OAuthRoute_TransmitCode :/ Nothing

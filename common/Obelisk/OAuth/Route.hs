@@ -77,7 +77,10 @@ data RedirectUriParams = RedirectUriParams
 -- backend can and should know the client secret needed for retrieving the
 -- actual access token.
 data OAuthRoute :: * -> * where
-  OAuthRoute_TransmitCode :: OAuthFrontend RedirectUriParams
+  -- This is a `Maybe` because we don't want to crash the application just
+  -- because of missing parameters. The `Nothing` case should be handled
+  -- gracefully and the user should be informed that the handshake failed.
+  OAuthRoute_TransmitCode :: OAuthRoute (Maybe RedirectUriParams)
 
 
 -- | The 'Encoder' of the 'OAuth' route. This should be used by the client
@@ -86,7 +89,7 @@ oauthRouteEncoder
   :: (MonadError Text check, MonadError Text parse)
   => Encoder check parse (R OAuthRoute) PageName
 oauthRouteEncoder = pathComponentEncoder $ \case
-  OAuth_RedirectUri -> PathSegment "redirect" redirectUriParamsEncoder
+  OAuthRoute_TransmitCode -> PathSegment "redirect" redirectUriParamsEncoder
 
 
 -- | An 'Encoder' for 'RedirectUriParams' that conforms to section
@@ -109,4 +112,4 @@ redirectUriParamsEncoder = first (unitEncoder []) . coidl . redirectUriParamsEnc
       }
 
 
-deriveRouteComponent ''OAuth
+deriveRouteComponent ''OAuthRoute

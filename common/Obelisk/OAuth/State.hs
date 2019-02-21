@@ -14,7 +14,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-| Random OAuthState.
 
-Description: Random OAuth state to prevent CSRF attacks.
+Random OAuth state to prevent CSRF attacks.
 See: <https://tools.ietf.org/html/rfc6749#section-10.12 CSRF> This module only
 exports the abstract `OAuthState` and a secure way to generate an `OAuthState`
 value. If you need more control, consider "Obelisk.OAuth.State.Internal",
