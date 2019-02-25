@@ -18,6 +18,7 @@ library
                  , Obelisk.OAuth.State.Internal
                  , Obelisk.OAuth.Request
                  , Obelisk.OAuth.Config
+                 , Obelisk.OAuth.Error
   other-extensions:
     DeriveGeneric,
     FlexibleContexts,

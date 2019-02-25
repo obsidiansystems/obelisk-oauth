@@ -55,7 +55,7 @@ import           Obelisk.OAuth.State   (OAuthState, oAuthStateAsText)
 import           Obelisk.Route
 
 import           Obelisk.OAuth.Config  (AuthorizationResponseType (..),
-                                        OAuthConfigPublic, OAuthConfigV (..))
+                                        OAuthConfigPublic, OAuthConfig (..))
 
 
 -- | Render the authorization request.
@@ -95,7 +95,7 @@ authorizationRequestParams enc cfg state = encode (queryParametersTextEncoder @I
           renderRedirectUri enc b r
     , case _oAuthConfig_scope cfg of
         [] -> Map.empty
-        xs -> Map.singleton "scope" $ T.intercalate " " xs
+        xs -> Map.singleton "scope" $ T.unwords xs
     , Map.singleton "state" (oAuthStateAsText state)
     ]
 

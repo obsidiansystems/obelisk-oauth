@@ -6,6 +6,7 @@
 -}
 module Obelisk.OAuth.State.Internal where
 
+import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Data.Aeson             (FromJSON, ToJSON)
 import qualified Data.ByteString.Base16 as Base16
 import           Data.Text              (Text)
@@ -35,8 +36,8 @@ oAuthStateAsText = unOAuthState
 --
 --   By truly random we mean unguessable by an attacker - e.g. not dependent
 --   on some value derived from the current time.
-genOAuthState :: IO OAuthState
-genOAuthState = do
+genOAuthState :: MonadIO m => m OAuthState
+genOAuthState = liftIO $ do
   let fastRandom nr = maybe (getEntropy nr) pure =<< getHardwareEntropy nr
   -- 20 bytes recommended by RFC: https://tools.ietf.org/html/rfc6749#section-10.10
   OAuthState . T.decodeUtf8 . Base16.encode <$> fastRandom 20

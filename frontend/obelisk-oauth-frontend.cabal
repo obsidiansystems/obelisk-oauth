@@ -1,0 +1,34 @@
+name:                obelisk-oauth-frontend
+version:             0.1.0.0
+synopsis:            OAuth frontend integration for Obelisk apps
+-- description:
+license:             BSD3
+license-file:        LICENSE
+author:              Obsidian Systems LLC
+maintainer:          maintainer@obsidian.systems
+-- copyright:
+category:            Web
+build-type:          Simple
+extra-source-files:  ChangeLog.md
+cabal-version:       >=1.10
+
+library
+  exposed-modules:  Obelisk.OAuth.Frontend
+
+  other-modules:    Obelisk.OAuth.Frontend.Storage
+                  , Obelisk.OAuth.Frontend.Internal
+  -- other-extensions:
+  build-depends:    base >=4.11 && <4.12
+                  , obelisk-oauth-common
+                  , obelisk-route
+                  , reflex
+                  , text
+                  , aeson
+                  , bytestring
+                  , ghcjs-dom
+                  , jsaddle
+                  , lens
+                  , dependent-sum
+
+  -- hs-source-dirs:
+  default-language:    Haskell2010

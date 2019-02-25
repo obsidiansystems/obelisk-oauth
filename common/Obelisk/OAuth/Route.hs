@@ -55,6 +55,13 @@ newtype OAuthCode = OAuthCode { unOAuthCode :: Text }
   deriving (Show, Read, Eq, Ord, Generic, ToJSON, FromJSON)
 
 
+-- | Actual access token as delivered by the backend.
+--
+--
+newtype OAuthToken = OAuthToken { unOAuthToken :: Text }
+  deriving (Show, Read, Eq, Ord, Generic, ToJSON, FromJSON)
+
+
 -- | Parameters that the authorization server is expected to provide when
 -- granting an authorization code request. See section
 -- <https://tools.ietf.org/html/rfc6749#section-4.1.2 4.1.2> of the

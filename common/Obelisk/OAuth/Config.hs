@@ -24,7 +24,7 @@ module Obelisk.OAuth.Config
   , OAuthClientSecret (..)
   , AuthorizationResponseType (..)
   , OAuthProvider (..)
-  , OAuthConfigV (..)
+  , OAuthConfig (..)
   , OAuthConfigPublic
   , OAuthConfigPrivate
     -- * Get a config
@@ -87,7 +87,7 @@ newtype OAuthProvider = OAuthProvider { unOAuthProvider :: Text }
 
 
 -- | Configuration for an OAuth authorization provider.
-data OAuthConfigV secret r = OAuthConfig
+data OAuthConfig secret r = OAuthConfig
   { _oAuthConfig_responseType :: AuthorizationResponseType
     -- ^ What response type to request and handle.
   , _oAuthConfig_provider     :: OAuthProvider
@@ -104,7 +104,6 @@ data OAuthConfigV secret r = OAuthConfig
     --   actual token) this would be for github:
     --
     --  https://github.com/login/oauth/access_token
-    --
   , _oAuthConfig_redirectUri  :: Maybe (Text, r (R OAuthRoute))
     -- ^ `fst` is scheme and host to build full redirect URI. Usually contents of
     -- `config/common/route`. Something like: "https://yourapp.com".
@@ -121,14 +120,14 @@ data OAuthConfigV secret r = OAuthConfig
   }
   deriving Generic
 
-deriving instance (Show (r (R OAuthRoute)), Show secret) => Show (OAuthConfigV secret r)
+deriving instance (Show (r (R OAuthRoute)), Show secret) => Show (OAuthConfig secret r)
 
 
--- | `OAuthConfigV` with client secret - for backend.
-type OAuthConfigPrivate r = OAuthConfigV OAuthClientSecret r
+-- | `OAuthConfig` with client secret - for backend.
+type OAuthConfigPrivate r = OAuthConfig OAuthClientSecret r
 
--- | `OAuthConfigV` without client secret - for frontend.
-type OAuthConfigPublic r = OAuthConfigV () r
+-- | `OAuthConfig` without client secret - for frontend.
+type OAuthConfigPublic r = OAuthConfig () r
 
 
 -- | Create a `OAuthConfigPublic` by reading values through "Obelisk.ExecutableConfig"
