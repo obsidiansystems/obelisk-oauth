@@ -55,7 +55,7 @@ import           Obelisk.OAuth.State   (OAuthState, oAuthStateAsText)
 import           Obelisk.Route
 
 import           Obelisk.OAuth.Config  (AuthorizationResponseType (..),
-                                        OAuthConfigPublic, OAuthConfig (..))
+                                        OAuthConfig (..))
 
 
 -- | Render the authorization request.
@@ -63,7 +63,7 @@ import           Obelisk.OAuth.Config  (AuthorizationResponseType (..),
 --   This should be all you need from this module in most cases.
 authorizationRequestHref
   :: Encoder Identity Identity (R (Sum r a)) PageName -- ^ Backend route encoder
-  -> OAuthConfigPublic r -- ^ Configuration for building up request.
+  -> OAuthConfig secret r -- ^ Configuration for building up request.
   -> OAuthState -- ^ The state for building the request URI.
   -> Text
      -- ^ Authorization grant request endpoint with query string
@@ -79,7 +79,7 @@ authorizationRequestHref enc cfg state =
 authorizationRequestParams
   :: Encoder Identity Identity (R (Sum r a)) PageName
      -- ^ Encoder for `_oAuthConfig_redirectUri`
-  -> OAuthConfigPublic r
+  -> OAuthConfig secret r
      -- ^ Configruation for building parameters
   -> OAuthState
   -> Text

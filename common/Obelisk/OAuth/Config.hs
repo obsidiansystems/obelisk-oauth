@@ -76,8 +76,7 @@ newtype OAuthClientSecret = OAuthClientSecret { unOAuthClientSecret :: Text }
 data AuthorizationResponseType
   = AuthorizationResponseType_Code
     -- ^ Authorization grant, this is the recommend way and the one this
-    -- library was actually tested with. TODO: Should we
-    -- maybe just get rid of `AuthorizationResponseType` entirely?
+    -- library was actually tested with.
   | AuthorizationResponseType_Token -- ^ Implicit grant - TODO: Test this!
   deriving (Show, Read, Eq, Ord, Generic)
 

@@ -13,7 +13,7 @@ build-type: Simple
 
 library
   exposed-modules:
-    Obelisk.OAuth.AccessToken
+    Obelisk.OAuth.Backend
   other-extensions: OverloadedStrings
   build-depends:
     base >=4.11,
