@@ -2,7 +2,8 @@
 {-| Implements retrieval of actual `OAuthToken` from authorization server.
 
 -}
-module Obelisk.OAuth.Backend where
+module Obelisk.OAuth.Backend
+  (getOAuthToken) where
 
 import           Data.Functor.Identity
 import           Data.Functor.Sum
@@ -22,7 +23,8 @@ import           Obelisk.Route
 --   data already. But: Different encodings used by providers. E.g. asana seems
 --   to do JSON encoding, github uses url encoding. Check hoauth2 for how they
 --   handle this and what the standard/implementation says. Can we force a
---   particular encoding reliably by setting the Accept header?
+--   particular encoding reliably by setting the Accept header? Or shall we
+--   just check headers and deal with different encodings?
 --
 getOAuthToken
   :: Encoder Identity Identity (R (Sum r a)) PageName

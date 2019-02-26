@@ -18,7 +18,21 @@
 
 -}
 module Obelisk.OAuth.Frontend
-  (
+  ( -- * Basic interface
+    OAuthFrontendConfig (..)
+  , HasOAuthFrontendConfig (..)
+  , OAuthFrontend (..)
+  , HasOAuthFrontend (..)
+  , TokenGetter
+  , makeOAuthFrontendExeCfg
+  , makeOAuthFrontend
+    -- * Needed constraints
+  , OAuthConstraints
+    -- * Implementation details (probably should not be exported here at all - use with care.)
+  , StoreOAuth (..)
+  , retrieveCode
+  , doAuthorize
+  , retrieveToken
   ) where
 
 import           Control.Lens
@@ -88,6 +102,12 @@ type TokenGetter m = RedirectUriParams -> m (Either OAuthError OAuthToken)
 
 -- | Make an `OAuthFrontend` by reading `OAuthConfig` by means of `getOAuthConfigPublic`.
 --
+--   TODO: We probably want to get rid of this function/ change type signature
+--   a bit. As we'd like to encourage the user to provide a config generation
+--   function based on `getOAuthConfigPublic` with user values already
+--   provided, which can then be used both in frontend and backend. We also
+--   might want to consider moving more values into the config. (Ideally we
+--   would just not need some of those all together.)
 makeOAuthFrontendExeCfg
   :: OAuthConstraints t m
   => OAuthProvider
@@ -101,6 +121,7 @@ makeOAuthFrontendExeCfg provider enc redirectUri getToken cfg = do
   makeOAuthFrontend enc sCfg getToken cfg
 
 
+-- | Make an `OAuthFrontend` provided with the needed configuration.
 makeOAuthFrontend
   :: OAuthConstraints t m
   => Encoder Identity Identity (R (Sum r a)) PageName
