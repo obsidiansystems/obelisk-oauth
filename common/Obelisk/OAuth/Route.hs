@@ -92,10 +92,10 @@ data OAuthRoute :: * -> * where
 
 -- | The 'Encoder' of the 'OAuth' route. This should be used by the client
 --   app's frontend route encoder.
-oauthRouteEncoder
+oAuthRouteEncoder
   :: (MonadError Text check, MonadError Text parse)
   => Encoder check parse (R OAuthRoute) PageName
-oauthRouteEncoder = pathComponentEncoder $ \case
+oAuthRouteEncoder = pathComponentEncoder $ \case
   OAuthRoute_TransmitCode -> PathSegment "redirect" redirectUriParamsEncoder
 
 
