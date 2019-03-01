@@ -54,6 +54,8 @@ serve $ \case
               , _tokenRequest_clientId = clientId -- Get this from the OAuth authorization server
               , _tokenRequest_clientSecret = clientSecret -- Get this from the OAuth authorization server
               , _tokenRequest_redirectUri = BackendRoute_OAuth
+              , _tokenRequest_responseType = "code"
+              , _tokenRequest_scopes = []
               }
             reqUrl = "https://app.asana.com/-/oauth_token"
         rsp <- liftIO $ flip httpLbs tlsMgr =<< getOauthToken reqUrl route checkedEncoder t
