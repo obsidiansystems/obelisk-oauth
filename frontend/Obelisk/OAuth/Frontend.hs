@@ -27,7 +27,7 @@ module Obelisk.OAuth.Frontend
   , makeOAuthFrontendExeCfg
   , makeOAuthFrontend
     -- * Needed constraints
-  , OAuthConstraints
+  , SupportsOAuth
     -- * Implementation details (probably should not be exported here at all - use with care.)
   , StoreOAuth (..)
   , retrieveCode
@@ -43,6 +43,7 @@ import           Data.Functor.Identity           (Identity (..))
 import           Data.Functor.Identity           (Identity)
 import           Data.Functor.Sum                (Sum (..))
 import           Data.Text                       (Text)
+import           GHC.Generics                    (Generic)
 import qualified GHCJS.DOM                       as DOM
 import qualified GHCJS.DOM.Window                as Window
 import           Language.Javascript.JSaddle     (MonadJSM)
@@ -59,78 +60,47 @@ import           Obelisk.OAuth.Frontend.Internal (makeReflexLenses,
 import           Obelisk.OAuth.Frontend.Storage
 import           Obelisk.OAuth.Request           (authorizationRequestHref)
 import           Obelisk.OAuth.Route             (OAuthRoute (..),
-                                                  OAuthToken (..),
+                                                  AccessToken (..),
                                                   RedirectUriParams (..))
 import           Obelisk.OAuth.State             (OAuthState, genOAuthState)
 
 
-data OAuthFrontendConfig t = OAuthFrontendConfig
-  { _oAuthFrontendConfig_authorize :: Event t ()
-    -- ^ Initiate authorization. Initiate this to get a valid access token.
+data OAuthFrontendConfig provider t = OAuthFrontendConfig
+  { _oAuthFrontendConfig_authorize :: Event t (AuthorizationRequest provider)
+    -- ^ Initiate authorization. This will forward the user to the
+    --   authorization provider/server - thus after triggering this event the user will
+    --   leave the application. Make sure you to save any important data!
   , _oAuthFrontendConfig_route     :: Dynamic t (Maybe (R OAuthRoute))
     -- ^ Get route updates that are relevant to OAuth.
   }
+  deriving Generic
 
-makeReflexLenses ''OAuthFrontendConfig
 
-
-data OAuthFrontend t = OAuthFrontend
-  { _oAuthFrontend_authorized :: Dynamic t (Maybe (Either OAuthError OAuthToken))
-    -- ^ When a authorized, this `Dynamic` will hold the needed access token.
-    --   Nothing when not yet authorized, else error or actual token.
+data OAuthFrontend provider t = OAuthFrontend
+  { _oAuthFrontend_authorized :: Event t (Either OAuthError (provider, AccessToken))
+    -- ^ Event gets triggered after authorization is completed, with either an
+    -- error or the token to be used for API requests.
   }
 
-makeReflexLenses ''OAuthFrontend
-
-
-type OAuthConstraints t m =
+type SupportsOAuth t m =
   ( Reflex t, MonadIO m, MonadHold t m, MonadJSM m, PostBuild t m
   , PerformEvent t m , MonadJSM (Performable m)
+  , Requester t m, Request m ~ OAuthRequest, Response m ~ DSum OAuthRequest Identity
   )
-
-data StoreOAuth a where
-  -- State that gets stored to session storage:
-  StoreOAuth_State :: StoreOAuth OAuthState
-  -- Access token that gets stored to local storage:
-  StoreOAuth_Token :: StoreOAuth OAuthToken
-
-deriving instance Show (StoreOAuth a)
-
--- | Function for asking the backend for the actual access token.
-type TokenGetter m = RedirectUriParams -> m (Either OAuthError OAuthToken)
-
-
--- | Make an `OAuthFrontend` by reading `OAuthConfig` by means of `getOAuthConfigPublic`.
---
---   TODO: We probably want to get rid of this function/ change type signature
---   a bit. As we'd like to encourage the user to provide a config generation
---   function based on `getOAuthConfigPublic` with user values already
---   provided, which can then be used both in frontend and backend. We also
---   might want to consider moving more values into the config. (Ideally we
---   would just not need some of those all together.)
-makeOAuthFrontendExeCfg
-  :: OAuthConstraints t m
-  => OAuthProvider
-  -> Encoder Identity Identity (R (Sum r a)) PageName
-  -> Maybe (r (R OAuthRoute))
-  -> TokenGetter (Performable m)
-  -> OAuthFrontendConfig t
-  -> m (OAuthFrontend t)
-makeOAuthFrontendExeCfg provider enc redirectUri getToken cfg = do
-  sCfg <- getOAuthConfigPublic provider redirectUri
-  makeOAuthFrontend enc sCfg getToken cfg
 
 
 -- | Make an `OAuthFrontend` provided with the needed configuration.
+--
+--   The browser's session storage is used for keeping track of the OAuth
+--   state. The storage key `show $ StoreOAuth_State
+--   _oAuthConfig_provider` is used for storing this state.
 makeOAuthFrontend
-  :: OAuthConstraints t m
-  => Encoder Identity Identity (R (Sum r a)) PageName
-  -> OAuthConfigPublic r
-  -> TokenGetter (Performable m)
+  :: (SupportsOAuth t m, OAuthProvider provider)
+  => OAuthConfig provider
   -> OAuthFrontendConfig t
   -> m (OAuthFrontend t)
-makeOAuthFrontend enc sCfg getToken cfg = do
-  onErrParams <- retrieveCode enc sCfg (_oAuthFrontendConfig_route cfg) $ _oAuthFrontendConfig_authorize cfg
+makeOAuthFrontend sCfg cfg = do
+  onErrParams <- retrieveCode sCfg (_oAuthFrontendConfig_route cfg) $ _oAuthFrontendConfig_authorize cfg
   eToken <- retrieveToken sCfg getToken onErrParams
   pure $ OAuthFrontend eToken
 
@@ -140,67 +110,136 @@ makeOAuthFrontend enc sCfg getToken cfg = do
 --
 --   State will be properly generated and checked.
 retrieveCode
-  :: forall t m r a. OAuthConstraints t m
+  :: forall t m r a. (SupportsOAuth t m, OAuthProvider provider)
   => Encoder Identity Identity (R (Sum r a)) PageName
   -> OAuthConfigPublic r
-  -> Dynamic t (Maybe (R OAuthRoute))
-  -> Event t ()
-  -> m (Event t (Either OAuthError RedirectUriParams))
-retrieveCode enc sCfg route onAuth = do
-    performEvent_ $ doAuthorize enc sCfg <$ onAuth
+  -> OAuthFrontendConfig t
+  -> m (Event t (Either OAuthError (provider, RedirectUriParams)))
+retrieveCode sCfg (OAuthFrontendConfig onAuth route) = do
 
-    onRoute <- tagOnPostBuild route
-    mOldState <- getItemStorage sessionStorage StoreOAuth_State
+    onReqState <- storeStateRequest <$> onAuth
+    performEvent_ $ doAuthorize sCfg <$> onReqState
+
+    onRoute <- fmapMaybe id <$> tagOnPostBuild route
+
     let
-      onParamsErr = fmapMaybe (fmap (checkState mOldState =<<) . getParams) onRoute
-    performEvent_ $ removeItemStorage sessionStorage StoreOAuth_State <$ onParamsErr
-    pure onParamsErr
+      (onErr, onParams) = fanEither $ getParams <$> onRoute
+
+    onStoreResp <-
+      requesting $ OAuthRequest_LoadState . oAuthProviderId . fst <$> onParams
+
+    onMStoredState = fmapMaybe id . ffor onStoreResp $ \case
+      OAuthRequest_LoadState provId :=> Identity mState -> Just (provId, mState)
+      _ -> Nothing
+
+    onParamsStored :: Event t ((provider, RedirectUriParams), Maybe OAuthState)
+      <- getReqResp
+          (oAuthProviderId . _authorizationRequest_provider . fst)
+          onParams
+          onMStoredState
+
+    -- Clean up after ourselves:
+    requesting_ $ OAuthRequest_RemoveState . oAuthProviderId . fst . fst <$> onParamsStored
+
+
+    pure $ leftmost
+      [ Left <$> onErr
+      , uncurry checkState <$> onParamsStored
+      ]
 
   where
-    checkState Nothing _ = Left OAuthError_NoSessionState
-    checkState (Just old) ps@(RedirectUriParams c new) = if new == old
+    checkState _ Nothing = Left OAuthError_NoSessionState
+    checkState ps@(_, RedirectUriParams c new) (Just old) = if new == old
       then Right ps
       else Left OAuthError_InvalidState
 
-    getParams :: Maybe (R OAuthRoute) -> Maybe (Either OAuthError RedirectUriParams)
+    getParams :: R OAuthRoute -> Either OAuthError (provider, RedirectUriParams)
     getParams = \case
-      Just (OAuthRoute_TransmitCode :=> Identity (Just p))  -> Just $ Right p
-      Just (OAuthRoute_TransmitCode :=> Identity Nothing) -> Just $ Left OAuthError_MissingCodeState
+      OAuthRoute_TransmitCode :=> Identity (providerId, Just pars) ->
+        case oAuthProviderFromId providerId of
+          Nothing -> Left OAuthError_InvalidProviderId
+          Just p -> Rigt (p, pars)
+      OAuthRoute_TransmitCode :=> Identity Nothing ->
+        Left OAuthError_MissingCodeState
+
+
+-- | Get an `OAuthCode` and make sure it is stored.
+storeStateOnRequest
+  :: forall t provider
+  . (Reflex t, MonadHold t m, MonadFix m, OAuthProvider provider)
+  => Event t AuthorizationRequest provider
+  -> m (Event t (AuthorizationRequest provider, OAuthState))
+storeStateOnRequest onReq = do
+
+    unsavedCode <- performEvent $ genOAuthState <$ onReq
+
+    r <- requesting $ OAuthRequest_StoreState providerId <$> unsavedCode
+
+    let onResp <- fmapMaybe id . ffor r $ \case
+      OAuthRequest_StoreState provId storedState :=> Identity () -> Just (provId, storedState)
       _ -> Nothing
+
+    getReqResp
+      (oAuthProviderId . _authorizationRequest_provider)
+      onReq
+      onResp
+
+
+-- | Get a response munched together with it's corresponding request.
+getReqResp
+  :: (Eq reqId, Ord reqId)
+  => (req -> reqId)
+  -> Event t req
+  -> Event t (reqId, resp)
+  -> Event t (req, resp)
+getReqResp getReqId onReq onResp = mdo
+
+    reqs <- foldDyn id Map.empty $ mergeWith (.) $
+      [ ffor onResp $
+          \(reqId, _) -> Map.delete reqId
+
+      , ffor onReq insertReq
+      ]
+
+    -- Handle coincidence of request and response properly:
+    pure $ fmapMaybe id $ alignWith buildResponse onReq $ attach (current reqs) onResp
+
+  where
+    insertReq r = Map.insert (getReqId r) r
+
+    buildResponse = \case
+      This _ -> Nothing
+      That (cReqs, (reqId, res)) -> (, res) <$> Map.lookup reqId cReqs
+      These req (cReqs, res) ->
+        buildResponse $ That (insertReq req cReqs, res)
 
 
 -- | Build request uri and forward user to authorization server.
 --
---   Also creates and stores the OAuth state in session storage.
 doAuthorize
-  :: (MonadIO m, MonadJSM m)
-  => Encoder Identity Identity (R (Sum r a)) PageName
-  -> OAuthConfigPublic r
+  :: (MonadIO m, MonadJSM m, OAuthProvider provider)
+  => OAuthConfigPublic r
+  -> (AuthorizationRequest provider, OAuthState)
   -> m ()
-doAuthorize enc sCfg = do
-  let
-    provider = _oAuthConfig_provider sCfg
-    uri = _oAuthConfig_providerUri sCfg
-    clientId = _oAuthConfig_clientId sCfg
-  oState <- genOAuthState
-  setItemStorage sessionStorage StoreOAuth_State oState
+doAuthorize sCfg (req, oState) = do
 
-  let
-    reqUri = authorizationRequestHref enc sCfg oState
+  let reqUri = authorizationRequestHref sCfg req oState
+
   w <- DOM.currentWindowUnchecked
+
   Window.open w (Just reqUri) (Just ("_self" :: Text)) (Nothing :: Maybe Text)
-  pure ()
+
 
 
 -- | Retrieves access token based on redirect values.
 --
 --   And updates localstorage accordingly.
 retrieveToken
-  :: OAuthConstraints t m
+  :: SupportsOAuth t m
   => OAuthConfigPublic r
   -> TokenGetter (Performable m)
   -> Event t (Either OAuthError RedirectUriParams)
-  -> m (Dynamic t (Maybe (Either OAuthError OAuthToken)))
+  -> m (Dynamic t (Maybe (Either OAuthError AccessToken)))
 retrieveToken sCfg getToken onErrParams = do
     let
       (onErr, onParams) = fanEither onErrParams

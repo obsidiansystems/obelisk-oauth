@@ -22,8 +22,11 @@ module Obelisk.OAuth.Route where
 
 import           Prelude                       hiding ((.))
 
-import           Control.Categorical.Bifunctor (first)
+import           Control.Categorical.Bifunctor (first, bimap)
 import           Control.Category              ((.))
+import Data.Dependent.Sum (DSum ((:=>)))
+import Data.Functor.Identity
+import           Control.Arrow ((&&&))
 import           Control.Category.Monoidal     (coidl)
 import           Control.Monad.Error.Class     (MonadError)
 import           Data.Aeson                    (FromJSON, ToJSON)
@@ -36,6 +39,7 @@ import           Obelisk.OAuth.State           (OAuthState, oAuthStateAsText,
                                                 unsafeMkOAuthState)
 import           Obelisk.Route
 import           Obelisk.Route.TH
+import Obelisk.OAuth.Provider (OAuthProviderId (..))
 
 -- | Id of an OAuth client.
 --
@@ -58,7 +62,7 @@ newtype OAuthCode = OAuthCode { unOAuthCode :: Text }
 -- | Actual access token as delivered by the backend.
 --
 --
-newtype OAuthToken = OAuthToken { unOAuthToken :: Text }
+newtype AccessToken = AccessToken { unOAuthToken :: Text }
   deriving (Show, Read, Eq, Ord, Generic, ToJSON, FromJSON)
 
 
@@ -74,20 +78,16 @@ data RedirectUriParams = RedirectUriParams
 
 
 -- | The OAuth routes necessary for authorization code grants. This should be
---   made a sub-route of the client application both in frontend routes _and_
---   backend routes.
+--   made a sub-route of the client application frontend routes.
 --
--- The frontend route will be used for the redirect coming from the
--- authorization server. The backend route is needed, so the frontend can
--- request the backend to retrieve the actual access token given the
--- transmitted authorization code. This extra step is needed as only the
--- backend can and should know the client secret needed for retrieving the
--- actual access token.
 data OAuthRoute :: * -> * where
-  -- This is a `Maybe` because we don't want to crash the application just
-  -- because of missing parameters. The `Nothing` case should be handled
-  -- gracefully and the user should be informed that the handshake failed.
-  OAuthRoute_TransmitCode :: OAuthRoute (Maybe RedirectUriParams)
+  OAuthRoute_Redirect :: OAuthRoute (OAuthProviderId, Maybe RedirectUriParams)
+  -- ^ Route for handling the redirect coming from the authorization server.
+  -- The given `RedirectUriParams` should be the passed query parameters of the
+  -- URI (if any). The encoder for `OAuthRoute` must not render any query
+  -- parameters if passed `Nothing` and must render/parse the
+  -- `RedirectUriParams` as "state" and "code" query srings in case of `Just`.
+  -- See `oAuthRouteEncoder` for a valid encoder.
 
 
 -- | The 'Encoder' of the 'OAuth' route. This should be used by the client
@@ -96,27 +96,56 @@ oAuthRouteEncoder
   :: (MonadError Text check, MonadError Text parse)
   => Encoder check parse (R OAuthRoute) PageName
 oAuthRouteEncoder = pathComponentEncoder $ \case
-  OAuthRoute_TransmitCode -> PathSegment "redirect" redirectUriParamsEncoder
+  OAuthRoute_Redirect -> PathSegment "redirect" $
+    bimap (singletonListEncoder . oAuthProviderIdEncoder) redirectUriParamsQueryEncoder
+
+{- oAuthRouteEncoder -}
+{-   :: (MonadError Text check, MonadError Text parse) -}
+{-   => Encoder check parse (R OAuthRoute) PageName -}
+{- oAuthRouteEncoder = -}
+{-   bimap (singletonListEncoder . oAuthProviderIdEncoder) redirectUriParamsQueryEncoder . oAuthRouteArgEncoder -}
+
+{- oAuthRouteArgEncoder -}
+{-   :: (MonadError Text check, MonadError Text parse) -}
+{-   => Encoder check parse (R OAuthRoute) (OAuthProviderId, Maybe RedirectUriParams) -}
+{- oAuthRouteArgEncoder = unsafeMkEncoder $ EncoderImpl -}
+{-   { _encoderImpl_encode = \case -}
+{-       OAuthRoute_Redirect :=> Identity (p, args) -> (p, args) -}
+{-   , _encoderImpl_decode = \(p, args) -> pure $ OAuthRoute_Redirect :=> Identity (p, args) -}
+{-   } -}
+
+
+oAuthProviderIdEncoder
+  :: (Applicative check, Applicative parse)
+  => Encoder check parse OAuthProviderId Text
+oAuthProviderIdEncoder = unsafeMkEncoder $ EncoderImpl
+  { _encoderImpl_encode = unOAuthProviderId
+  , _encoderImpl_decode = pure . OAuthProviderId
+  }
 
 
 -- | An 'Encoder' for 'RedirectUriParams' that conforms to section
 --   <https://tools.ietf.org/html/rfc6749#section-4.1.2 4.1.2>.
-redirectUriParamsEncoder
+redirectUriParamsPageNameEncoder
   :: forall parse check. (MonadError Text parse, Applicative check)
   => Encoder check parse (Maybe RedirectUriParams) PageName
-redirectUriParamsEncoder = first (unitEncoder []) . coidl . redirectUriParamsEncoder'
-  where
-    redirectUriParamsEncoder' :: Encoder check parse (Maybe RedirectUriParams) (Map Text (Maybe Text))
-    redirectUriParamsEncoder' = unsafeMkEncoder $ EncoderImpl
-      { _encoderImpl_decode = \m -> case (Map.lookup "code" m, Map.lookup "state" m) of
-          (Just (Just c), Just (Just s)) -> return $ Just $
-            RedirectUriParams (OAuthCode c) (unsafeMkOAuthState s)
-          _ -> return Nothing
-      , _encoderImpl_encode = \case
-        Just (RedirectUriParams (OAuthCode code) state) -> Map.fromList $
-          [("code", Just code), ("state", Just (oAuthStateAsText state))]
-        Nothing -> Map.empty
-      }
+redirectUriParamsPageNameEncoder = first (unitEncoder []) . coidl . redirectUriParamsQueryEncoder
+
+
+redirectUriParamsQueryEncoder
+  :: forall parse check. (MonadError Text parse, Applicative check)
+  => Encoder check parse (Maybe RedirectUriParams) (Map Text (Maybe Text))
+redirectUriParamsQueryEncoder = unsafeMkEncoder $ EncoderImpl
+  { _encoderImpl_decode = \m -> case (Map.lookup "code" m, Map.lookup "state" m) of
+      (Just (Just c), Just (Just s)) -> return $ Just $
+        RedirectUriParams (OAuthCode c) (unsafeMkOAuthState s)
+      _ -> return Nothing
+  , _encoderImpl_encode = \case
+    Just (RedirectUriParams (OAuthCode code) state) -> Map.fromList $
+      [("code", Just code), ("state", Just (oAuthStateAsText state))]
+    Nothing -> Map.empty
+  }
 
 
 deriveRouteComponent ''OAuthRoute
+

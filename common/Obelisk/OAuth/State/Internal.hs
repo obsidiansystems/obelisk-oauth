@@ -38,6 +38,5 @@ oAuthStateAsText = unOAuthState
 --   on some value derived from the current time.
 genOAuthState :: MonadIO m => m OAuthState
 genOAuthState = liftIO $ do
-  let fastRandom nr = maybe (getEntropy nr) pure =<< getHardwareEntropy nr
   -- 20 bytes recommended by RFC: https://tools.ietf.org/html/rfc6749#section-10.10
-  OAuthState . T.decodeUtf8 . Base16.encode <$> fastRandom 20
+  OAuthState . T.decodeUtf8 . Base16.encode <$> getEntropy 20

@@ -6,6 +6,6 @@ module Obelisk.OAuth.Common
 
 import Obelisk.OAuth.Config as OAuth
 import Obelisk.OAuth.Error as OAuth
-import Obelisk.OAuth.Request as OAuth
 import Obelisk.OAuth.Route as OAuth
 import Obelisk.OAuth.State as OAuth
+import Obelisk.OAuth.Provider as OAuth

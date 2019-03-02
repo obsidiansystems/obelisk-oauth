@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-| Implements retrieval of actual `OAuthToken` from authorization server.
+{-| Implements retrieval of actual `AccessToken` from authorization server.
 
 -}
 module Obelisk.OAuth.Backend
-  (getOAuthToken) where
+  (getAccessToken) where
 
 import           Data.Functor.Identity
 import           Data.Functor.Sum
@@ -26,12 +26,12 @@ import           Obelisk.Route
 --   particular encoding reliably by setting the Accept header? Or shall we
 --   just check headers and deal with different encodings?
 --
-getOAuthToken
+getAccessToken
   :: Encoder Identity Identity (R (Sum r a)) PageName
   -> OAuthConfigPrivate r
   -> RedirectUriParams
   -> IO Request
-getOAuthToken enc cfg params = do
+getAccessToken enc cfg params = do
   req <- parseRequest . T.unpack $ _oAuthConfig_providerUri cfg
   let
     form =
