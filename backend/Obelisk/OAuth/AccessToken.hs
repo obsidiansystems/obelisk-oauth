@@ -38,7 +38,7 @@ getOauthToken reqUrl appRoute enc t = do
   req <- parseRequest reqUrl
   let form =
         [ partBS "client_id" $ T.encodeUtf8 $ _tokenRequest_clientId t
-        , responseIsToken $ partBS "client_secret" $ T.encodeUtf8 $ _tokenRequest_clientSecret t
+        , partBS "client_secret" $ T.encodeUtf8 $ _tokenRequest_clientSecret t
         , partBS "redirect_uri" $ T.encodeUtf8 $
             appRoute <> (renderBackendRoute enc $ _tokenRequest_redirectUri t :/ OAuth_RedirectUri :/ Nothing)
         , partBS "response_type" $ T.encodeUtf8 $ _tokenRequest_responseType t
@@ -47,15 +47,11 @@ getOauthToken reqUrl appRoute enc t = do
             xs -> partBS "scope" $ T.encodeUtf8 $ T.intercalate " " xs
         ] ++ case _tokenRequest_grant t of
           TokenGrant_AuthorizationCode code ->
-            [ responseIsToken $ partBS "grant_type" "authorization_code"
-            , responseIsToken $ partBS "code" code
+            [ partBS "grant_type" "authorization_code"
+            , partBS "code" code
             ]
           TokenGrant_RefreshToken refresh ->
             [ partBS "grant_type" "refresh_token"
             , partBS "refresh_token" refresh
             ]
   formDataBody form $ req { method = "POST" }
-  where
-    responseIsToken a = case _tokenRequest_responseType t of
-      "token" -> partBS "" ""
-      _ -> a
