@@ -26,7 +26,7 @@ example.
 module Obelisk.OAuth.AuthorizationRequest
   ( -- * Types and classes
     AuthorizationResponseType (..)
-  , AuthorizationRequest
+  , AuthorizationRequest (..)
   , OAuthClientId (..)
   , OAuthState
     -- * Build actual request

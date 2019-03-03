@@ -45,7 +45,7 @@ data OAuthBackendRequest :: * -> * where
 --   session storage> is actual an ideal candidate for implementing the needed
 --   storage for those requests.
 data OAuthRequest :: * -> * where
-  OAuthRequest_Backend :: OAuthBackendRequest a -> OAuthRequest (OAuthBackendRequest a)
+  OAuthRequest_Backend :: OAuthBackendRequest a -> OAuthRequest a
   OAuthRequest_StoreState :: OAuthProviderId -> OAuthState -> OAuthRequest ()
   OAuthRequest_LoadState :: OAuthProviderId -> OAuthRequest (Maybe OAuthState)
   OAuthRequest_RemoveState :: OAuthProviderId -> OAuthRequest ()
