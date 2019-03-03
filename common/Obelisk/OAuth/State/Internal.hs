@@ -12,7 +12,7 @@ import qualified Data.ByteString.Base16 as Base16
 import           Data.Text              (Text)
 import qualified Data.Text.Encoding     as T
 import           GHC.Generics           (Generic)
-import           System.Entropy         (getEntropy, getHardwareEntropy)
+import           System.Entropy         (getEntropy)
 
 
 -- | Oauth state to prevent CSRF attacks.

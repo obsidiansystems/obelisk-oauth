@@ -16,12 +16,13 @@
 -}
 module Obelisk.OAuth.Api
   ( OAuthRequest (..)
-  , OAuthBackendRequest
+  , OAuthBackendRequest (..)
   ) where
 
 import Obelisk.OAuth.Route (RedirectUriParams, AccessToken)
 import Obelisk.OAuth.Error (OAuthError)
-import Obelisk.OAuth.Provider (ProviderId)
+import Obelisk.OAuth.Provider (OAuthProviderId)
+import Obelisk.OAuth.State (OAuthState)
 
 
 -- | OAuth frontend/bakend requests.

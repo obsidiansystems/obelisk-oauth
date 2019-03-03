@@ -24,9 +24,6 @@ import           Prelude                       hiding ((.))
 
 import           Control.Categorical.Bifunctor (first, bimap)
 import           Control.Category              ((.))
-import Data.Dependent.Sum (DSum ((:=>)))
-import Data.Functor.Identity
-import           Control.Arrow ((&&&))
 import           Control.Category.Monoidal     (coidl)
 import           Control.Monad.Error.Class     (MonadError)
 import           Data.Aeson                    (FromJSON, ToJSON)
@@ -79,15 +76,15 @@ data RedirectUriParams = RedirectUriParams
 
 -- | The OAuth routes necessary for authorization code grants. This should be
 --   made a sub-route of the client application frontend routes.
---
 data OAuthRoute :: * -> * where
-  OAuthRoute_Redirect :: OAuthRoute (OAuthProviderId, Maybe RedirectUriParams)
-  -- ^ Route for handling the redirect coming from the authorization server.
+  -- | Route for handling the redirect coming from the authorization server.
+  --
   -- The given `RedirectUriParams` should be the passed query parameters of the
   -- URI (if any). The encoder for `OAuthRoute` must not render any query
   -- parameters if passed `Nothing` and must render/parse the
   -- `RedirectUriParams` as "state" and "code" query srings in case of `Just`.
   -- See `oAuthRouteEncoder` for a valid encoder.
+  OAuthRoute_Redirect :: OAuthRoute (OAuthProviderId, Maybe RedirectUriParams)
 
 
 -- | The 'Encoder' of the 'OAuth' route. This should be used by the client
@@ -98,21 +95,6 @@ oAuthRouteEncoder
 oAuthRouteEncoder = pathComponentEncoder $ \case
   OAuthRoute_Redirect -> PathSegment "redirect" $
     bimap (singletonListEncoder . oAuthProviderIdEncoder) redirectUriParamsQueryEncoder
-
-{- oAuthRouteEncoder -}
-{-   :: (MonadError Text check, MonadError Text parse) -}
-{-   => Encoder check parse (R OAuthRoute) PageName -}
-{- oAuthRouteEncoder = -}
-{-   bimap (singletonListEncoder . oAuthProviderIdEncoder) redirectUriParamsQueryEncoder . oAuthRouteArgEncoder -}
-
-{- oAuthRouteArgEncoder -}
-{-   :: (MonadError Text check, MonadError Text parse) -}
-{-   => Encoder check parse (R OAuthRoute) (OAuthProviderId, Maybe RedirectUriParams) -}
-{- oAuthRouteArgEncoder = unsafeMkEncoder $ EncoderImpl -}
-{-   { _encoderImpl_encode = \case -}
-{-       OAuthRoute_Redirect :=> Identity (p, args) -> (p, args) -}
-{-   , _encoderImpl_decode = \(p, args) -> pure $ OAuthRoute_Redirect :=> Identity (p, args) -}
-{-   } -}
 
 
 oAuthProviderIdEncoder

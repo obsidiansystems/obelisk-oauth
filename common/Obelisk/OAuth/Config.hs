@@ -23,21 +23,17 @@ module Obelisk.OAuth.Config
     OAuthClientId (..)
   , OAuthClientSecret (..)
   , AuthorizationResponseType (..)
+  , ProviderConfig (..)
   , OAuthConfig (..)
-  , OAuthConfigPublic
-  , OAuthConfigPrivate
     -- * Get a config
   {- , getOAuthConfigPublic -}
   {- , getOAuthConfigPrivate -}
   ) where
 
-import           Control.Monad.IO.Class   (MonadIO, liftIO)
 import           Data.Aeson               (FromJSON, ToJSON)
 import           Data.Text
-import qualified Data.Text                as T
 import           GHC.Generics             (Generic)
 
-import qualified Obelisk.ExecutableConfig
 import           Obelisk.Route            (R)
 
 import           Obelisk.OAuth.Route
@@ -107,9 +103,7 @@ data OAuthConfig provider = OAuthConfig
     -- ^ Means to retrieve configuration for any given provider.
 
   {- , _oAuthConfig_clientSecret :: secret -}
-    -- ^ The < https://tools.ietf.org/html/rfc6749#section-2.3 client secret>
+    -- The < https://tools.ietf.org/html/rfc6749#section-2.3 client secret>
     -- used by the backend to authenticate to the authorization server.
   }
   deriving Generic
-
-deriving instance (Show (r (R OAuthRoute)), Show secret) => Show (OAuthConfig secret r)
