@@ -81,6 +81,8 @@ data OAuthFrontend provider t = OAuthFrontend
     -- ^ Event gets triggered after authorization is completed, with either an
     -- error or the token to be used for API requests.
   }
+  deriving Generic
+
 
 type SupportsOAuth t m =
   ( Reflex t, MonadIO m, MonadHold t m, MonadJSM m, PostBuild t m
@@ -101,8 +103,12 @@ makeOAuthFrontend
   -> m (OAuthFrontend t)
 makeOAuthFrontend sCfg cfg = do
   onErrParams <- retrieveCode sCfg (_oAuthFrontendConfig_route cfg) $ _oAuthFrontendConfig_authorize cfg
-  eToken <- retrieveToken sCfg getToken onErrParams
-  pure $ OAuthFrontend eToken
+  let (onErr, onParams) = fanEither onErrParams
+  eToken <- retrieveToken sCfg getToken onParams
+  pure $ OAuthFrontend $ leftmost
+    [ Left <$> onErr
+    , eToken
+    ]
 
 
 -- | Takes care of issuing the initial authorization request and handling the
@@ -141,7 +147,6 @@ retrieveCode sCfg (OAuthFrontendConfig onAuth route) = do
     -- Clean up after ourselves:
     requesting_ $ OAuthRequest_RemoveState . oAuthProviderId . fst . fst <$> onParamsStored
 
-
     pure $ leftmost
       [ Left <$> onErr
       , uncurry checkState <$> onParamsStored
@@ -156,9 +161,7 @@ retrieveCode sCfg (OAuthFrontendConfig onAuth route) = do
     getParams :: R OAuthRoute -> Either OAuthError (provider, RedirectUriParams)
     getParams = \case
       OAuthRoute_TransmitCode :=> Identity (providerId, Just pars) ->
-        case oAuthProviderFromId providerId of
-          Nothing -> Left OAuthError_InvalidProviderId
-          Just p -> Rigt (p, pars)
+        (, pars) <$> oAuthProviderFromIdErr providerId
       OAuthRoute_TransmitCode :=> Identity Nothing ->
         Left OAuthError_MissingCodeState
 
@@ -185,7 +188,61 @@ storeStateOnRequest onReq = do
       onResp
 
 
+-- | Build request uri and forward user to authorization server.
+--
+doAuthorize
+  :: (MonadIO m, MonadJSM m, OAuthProvider provider)
+  => OAuthConfigPublic r
+  -> (AuthorizationRequest provider, OAuthState)
+  -> m ()
+doAuthorize sCfg (req, oState) = do
+
+  let reqUri = authorizationRequestHref sCfg req oState
+
+  w <- DOM.currentWindowUnchecked
+
+  Window.open w (Just reqUri) (Just ("_self" :: Text)) (Nothing :: Maybe Text)
+
+
+-- | Retrieves access token based on redirect values.
+--
+--   And updates localstorage accordingly.
+retrieveToken
+  :: SupportsOAuth t m
+  => OAuthConfig provider
+  -> Event t (provider, RedirectUriParams)
+  -> m (Event t (Either OAuthError (provider, AccessToken)))
+retrieveToken sCfg getToken onErrParams = do
+    let
+      (onErr, onParams) = fanEither onErrParams
+      mkReq (p, ps) = OAuthRequest_Backend $ OAuthBackendRequest_GetToken (oAuthProviderId p) ps
+
+    (onDirectToken, onParamsReq) <- ffor onParams $ \ps@(provider, RedirectUriParams code state) ->
+      let
+        rType = _providerConfig_responseType . _oAuthConfig_provider $ provider
+      in
+        case rType of
+          AuthorizationResponseType_Token -> Left (provider, AccessToken . unOAuthCode $ code)
+          AuthorizationResponseType_Code  -> Right ps
+
+    eTokenRsp <- requesting $ mkReq <$> onParamsReq
+    let
+      eToken = fmapMaybe id $ ffor eTokenRsp $ \case
+        OAuthRequest_Backend (OAuthBackendRequest_GetToken provId _) :=> Identity errToken ->
+          Just $ (,) <$> oAuthProviderFromIdErr provId <*> errToken
+        _ ->
+          Nothing
+
+    pure $ leftmost
+      [ Left <$> onErr
+      , Right <$> onDirectToken
+      , eToken
+      ]
+
+
 -- | Get a response munched together with it's corresponding request.
+--
+--   TODO: What to do with multiple identical requests?
 getReqResp
   :: (Eq reqId, Ord reqId)
   => (req -> reqId)
@@ -212,45 +269,3 @@ getReqResp getReqId onReq onResp = mdo
       That (cReqs, (reqId, res)) -> (, res) <$> Map.lookup reqId cReqs
       These req (cReqs, res) ->
         buildResponse $ That (insertReq req cReqs, res)
-
-
--- | Build request uri and forward user to authorization server.
---
-doAuthorize
-  :: (MonadIO m, MonadJSM m, OAuthProvider provider)
-  => OAuthConfigPublic r
-  -> (AuthorizationRequest provider, OAuthState)
-  -> m ()
-doAuthorize sCfg (req, oState) = do
-
-  let reqUri = authorizationRequestHref sCfg req oState
-
-  w <- DOM.currentWindowUnchecked
-
-  Window.open w (Just reqUri) (Just ("_self" :: Text)) (Nothing :: Maybe Text)
-
-
-
--- | Retrieves access token based on redirect values.
---
---   And updates localstorage accordingly.
-retrieveToken
-  :: SupportsOAuth t m
-  => OAuthConfigPublic r
-  -> TokenGetter (Performable m)
-  -> Event t (Either OAuthError RedirectUriParams)
-  -> m (Dynamic t (Maybe (Either OAuthError AccessToken)))
-retrieveToken sCfg getToken onErrParams = do
-    let
-      (onErr, onParams) = fanEither onErrParams
-
-    eToken <- performEvent $ getToken <$> onParams
-
-    mToken <- getItemStorage localStorage StoreOAuth_Token
-
-    let
-      onNewToken = leftmost [ Left <$> onErr, eToken ]
-
-    performEvent_ $
-      setItemStorage localStorage StoreOAuth_Token <$> fmapMaybe (^? _Right) onNewToken
-    holdDyn (fmap Right mToken) . fmap Just $ onNewToken
