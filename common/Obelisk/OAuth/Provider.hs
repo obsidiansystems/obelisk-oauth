@@ -17,11 +17,15 @@
 module Obelisk.OAuth.Provider
   ( OAuthProviderId (..)
   , OAuthProvider (..)
+  , oAuthProviderFromIdErr
   ) where
 
 import Data.Text (Text)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.String (IsString)
+import Control.Monad.Except (MonadError (throwError))
+
+import Obelisk.OAuth.Error (OAuthError (OAuthError_InvalidProviderId))
 
 
 newtype OAuthProviderId = OAuthProviderId { unOAuthProviderId :: Text }
@@ -59,3 +63,7 @@ class (Eq p, Ord p, Show p) => OAuthProvider p where
   -- For github this would be: https://github.com/login/oauth/access_token
   -- (Used by the backend.)
   oAuthAccessTokenEndpoint :: p -> Text
+
+-- | Parse a provider id in an OAuthError error monad.
+oAuthProviderFromIdErr :: (MonadError OAuthError m, OAuthProvider provider) => OAuthProviderId -> m provider
+oAuthProviderFromIdErr = maybe (throwError OAuthError_InvalidProviderId) pure . oAuthProviderFromId
