@@ -11,7 +11,6 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-| Creation of the authorization request, targeted at the authorization server, initiated by the frontend.
 
 This module provides the means for easily creating a request to an
@@ -50,8 +49,8 @@ import qualified Data.Text as T
 import Obelisk.OAuth.Route (OAuthClientId (..), OAuthRoute (..), redirectUriParamsPageNameEncoder)
 import Obelisk.OAuth.State (OAuthState, oAuthStateAsText)
 import Obelisk.Route
-
-import Obelisk.OAuth.Config (AuthorizationResponseType (..), OAuthConfig (..))
+import Obelisk.OAuth.Config (AuthorizationResponseType (..), OAuthConfig (..), ProviderConfig (..))
+import Obelisk.OAuth.Provider
 
 -- | Request going to an authorization server/provider.
 data AuthorizationRequest provider = AuthorizationRequest
@@ -66,12 +65,13 @@ data AuthorizationRequest provider = AuthorizationRequest
 --
 --   This should be all you need from this module in most cases.
 authorizationRequestHref
-  :: OAuthConfig provider
+  :: OAuthProvider provider
+  => OAuthConfig provider
   -> AuthorizationRequest provider
   -> OAuthState
   -> Text -- ^ Authorization grant request endpoint with query string
 authorizationRequestHref cfg req state =
-  _oAuthAuthorizeEndpoint  (_authorizationRequest_provider req) <> "?" <>
+  oAuthAuthorizeEndpoint  (_authorizationRequest_provider req) <> "?" <>
     authorizationRequestParams cfg req state
 
 
@@ -81,7 +81,8 @@ authorizationRequestHref cfg req state =
 -- <https://tools.ietf.org/html/rfc6749#section-4.1.1 4.1.1> of the
 -- specification.  This does not insert a leading @?@.
 authorizationRequestParams
-  :: OAuthConfig provider
+  :: OAuthProvider provider
+  => OAuthConfig provider
   -> AuthorizationRequest provider
   -> OAuthState
   -> Text
@@ -96,11 +97,11 @@ authorizationRequestParams cfg req state =
         AuthorizationResponseType_Code  -> "code"
         AuthorizationResponseType_Token -> "token"
     , Map.singleton "client_id" (unOAuthClientId . _providerConfig_clientId $ pCfg)
-    , case _oAuthConfig_redirectUri cfg of
+    , case _oAuthConfig_renderRedirectUri cfg of
         Nothing -> Map.empty
         Just render -> Map.singleton "redirect_uri" $
           render $ OAuthRoute_Redirect :/ (oAuthProviderId provider, Nothing)
-    , case _oAuthConfig_scope cfg of
+    , case _authorizationRequest_scope req of
         [] -> Map.empty
         xs -> Map.singleton "scope" $ T.unwords xs
     , Map.singleton "state" (oAuthStateAsText state)

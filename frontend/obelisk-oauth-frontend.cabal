@@ -30,6 +30,7 @@ library
                   , jsaddle
                   , lens
                   , dependent-sum
+                  , containers
 
 
   -- hs-source-dirs:
