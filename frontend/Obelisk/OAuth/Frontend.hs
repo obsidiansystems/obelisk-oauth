@@ -35,34 +35,28 @@ module Obelisk.OAuth.Frontend
   , retrieveToken
   ) where
 
-import           Control.Lens
-import           Control.Monad                   ((<=<))
-import           Control.Monad.IO.Class          (MonadIO, liftIO)
-import           Data.Dependent.Sum              (DSum ((:=>)))
-import           Data.Functor.Identity           (Identity (..))
-import           Data.Functor.Identity           (Identity)
-import           Data.Functor.Sum                (Sum (..))
-import           Data.Text                       (Text)
-import           GHC.Generics                    (Generic)
-import qualified GHCJS.DOM                       as DOM
-import qualified GHCJS.DOM.Window                as Window
-import           Language.Javascript.JSaddle     (MonadJSM)
-import           Obelisk.Route                   (Encoder, PageName, R)
-import           Reflex
+import Control.Lens
+import Control.Monad ((<=<))
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Data.Dependent.Sum (DSum ((:=>)))
+import Data.Functor.Identity (Identity (..))
+import Data.Functor.Identity (Identity)
+import Data.Functor.Sum (Sum (..))
+import Data.Text (Text)
+import GHC.Generics (Generic)
+import qualified GHCJS.DOM as DOM
+import qualified GHCJS.DOM.Window as Window
+import Language.Javascript.JSaddle (MonadJSM)
+import Obelisk.Route (Encoder, PageName, R)
+import Reflex
 
-import           Obelisk.OAuth.Config            (OAuthConfig (..),
-                                                  OAuthConfigPublic,
-                                                  OAuthProvider,
-                                                  getOAuthConfigPublic)
-import           Obelisk.OAuth.Error             (OAuthError (..))
-import           Obelisk.OAuth.Frontend.Internal (makeReflexLenses,
-                                                  tagOnPostBuild)
-import           Obelisk.OAuth.Frontend.Storage
-import           Obelisk.OAuth.Request           (authorizationRequestHref)
-import           Obelisk.OAuth.Route             (OAuthRoute (..),
-                                                  AccessToken (..),
-                                                  RedirectUriParams (..))
-import           Obelisk.OAuth.State             (OAuthState, genOAuthState)
+import Obelisk.OAuth.Config (OAuthConfig (..), OAuthConfigPublic, OAuthProvider, getOAuthConfigPublic)
+import Obelisk.OAuth.Error (OAuthError (..))
+import Obelisk.OAuth.Frontend.Internal (makeReflexLenses, tagOnPostBuild)
+import Obelisk.OAuth.Frontend.Storage
+import Obelisk.OAuth.Request (authorizationRequestHref)
+import Obelisk.OAuth.Route (OAuthRoute (..), AccessToken (..), RedirectUriParams (..))
+import Obelisk.OAuth.State (OAuthState, genOAuthState)
 
 
 data OAuthFrontendConfig provider t = OAuthFrontendConfig

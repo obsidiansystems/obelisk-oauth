@@ -13,17 +13,16 @@ module Obelisk.OAuth.Frontend.Storage
   , GHCJS.Storage
   ) where
 
-import           Control.Monad.IO.Class (MonadIO)
-import           Data.Aeson             (FromJSON, ToJSON)
-import qualified Data.Aeson             as Aeson
-import qualified Data.ByteString.Lazy   as BL
-import qualified Data.Text              as T
-import qualified Data.Text.Encoding     as T
-import qualified GHCJS.DOM              as DOM
-import qualified GHCJS.DOM.Storage      as GHCJS
-import           GHCJS.DOM.Types        (JSString, MonadJSM, fromJSString,
-                                         toJSString)
-import qualified GHCJS.DOM.Window       as Window
+import Control.Monad.IO.Class (MonadIO)
+import Data.Aeson (FromJSON, ToJSON)
+import qualified Data.Aeson as Aeson
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified GHCJS.DOM as DOM
+import qualified GHCJS.DOM.Storage as GHCJS
+import GHCJS.DOM.Types (JSString, MonadJSM, fromJSString, toJSString)
+import qualified GHCJS.DOM.Window as Window
 
 -- | Get access to browser's local storage.
 localStorage :: MonadJSM m => m GHCJS.Storage

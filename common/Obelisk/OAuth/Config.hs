@@ -30,13 +30,13 @@ module Obelisk.OAuth.Config
   {- , getOAuthConfigPrivate -}
   ) where
 
-import           Data.Aeson               (FromJSON, ToJSON)
-import           Data.Text
-import           GHC.Generics             (Generic)
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Text
+import GHC.Generics (Generic)
 
-import           Obelisk.Route            (R)
+import Obelisk.Route (R)
 
-import           Obelisk.OAuth.Route
+import Obelisk.OAuth.Route
 
 -- | The secret needed for actually retrieving the access token.
 --

@@ -6,13 +6,13 @@
 -}
 module Obelisk.OAuth.State.Internal where
 
-import           Control.Monad.IO.Class (MonadIO, liftIO)
-import           Data.Aeson             (FromJSON, ToJSON)
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Data.Aeson (FromJSON, ToJSON)
 import qualified Data.ByteString.Base16 as Base16
-import           Data.Text              (Text)
-import qualified Data.Text.Encoding     as T
-import           GHC.Generics           (Generic)
-import           System.Entropy         (getEntropy)
+import Data.Text (Text)
+import qualified Data.Text.Encoding as T
+import GHC.Generics (Generic)
+import System.Entropy (getEntropy)
 
 
 -- | Oauth state to prevent CSRF attacks.

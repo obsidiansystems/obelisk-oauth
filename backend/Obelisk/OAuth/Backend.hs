@@ -5,16 +5,15 @@
 module Obelisk.OAuth.Backend
   (getAccessToken) where
 
-import           Data.Functor.Identity
-import           Data.Functor.Sum
-import qualified Data.Text                             as T
-import qualified Data.Text.Encoding                    as T
-import           Network.HTTP.Client                   (Request (..),
-                                                        parseRequest)
-import           Network.HTTP.Client.MultipartFormData (formDataBody, partBS)
+import Data.Functor.Identity
+import Data.Functor.Sum
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import Network.HTTP.Client (Request (..), parseRequest)
+import Network.HTTP.Client.MultipartFormData (formDataBody, partBS)
 
-import           Obelisk.OAuth.Common
-import           Obelisk.Route
+import Obelisk.OAuth.Common
+import Obelisk.Route
 
 
 -- | Get a request for retrieving the access token.

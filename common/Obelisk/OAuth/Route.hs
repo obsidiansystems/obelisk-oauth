@@ -20,22 +20,21 @@ the authorization server.
 -}
 module Obelisk.OAuth.Route where
 
-import           Prelude                       hiding ((.))
+import Prelude hiding ((.))
 
-import           Control.Categorical.Bifunctor (first, bimap)
-import           Control.Category              ((.))
-import           Control.Category.Monoidal     (coidl)
-import           Control.Monad.Error.Class     (MonadError)
-import           Data.Aeson                    (FromJSON, ToJSON)
-import           Data.Map                      (Map)
-import qualified Data.Map                      as Map
-import           Data.Text                     (Text)
-import           GHC.Generics                  (Generic)
+import Control.Categorical.Bifunctor (first, bimap)
+import Control.Category ((.))
+import Control.Category.Monoidal (coidl)
+import Control.Monad.Error.Class (MonadError)
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Data.Text (Text)
+import GHC.Generics (Generic)
 
-import           Obelisk.OAuth.State           (OAuthState, oAuthStateAsText,
-                                                unsafeMkOAuthState)
-import           Obelisk.Route
-import           Obelisk.Route.TH
+import Obelisk.OAuth.State (OAuthState, oAuthStateAsText, unsafeMkOAuthState)
+import Obelisk.Route
+import Obelisk.Route.TH
 import Obelisk.OAuth.Provider (OAuthProviderId (..))
 
 -- | Id of an OAuth client.

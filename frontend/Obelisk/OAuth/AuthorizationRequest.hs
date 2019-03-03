@@ -38,22 +38,20 @@ module Obelisk.OAuth.AuthorizationRequest
   , authorizationRequestParams
   ) where
 
-import           Prelude               hiding ((.))
+import Prelude hiding ((.))
 
-import           Control.Category      ((.))
-import           Data.Functor.Identity (Identity (..))
-import           Data.Functor.Sum      (Sum (..))
-import qualified Data.Map              as Map
-import           Data.Text             (Text)
-import qualified Data.Text             as T
+import Control.Category ((.))
+import Data.Functor.Identity (Identity (..))
+import Data.Functor.Sum (Sum (..))
+import qualified Data.Map as Map
+import Data.Text (Text)
+import qualified Data.Text as T
 
-import           Obelisk.OAuth.Route   (OAuthClientId (..), OAuthRoute (..),
-                                        redirectUriParamsPageNameEncoder)
-import           Obelisk.OAuth.State   (OAuthState, oAuthStateAsText)
-import           Obelisk.Route
+import Obelisk.OAuth.Route (OAuthClientId (..), OAuthRoute (..), redirectUriParamsPageNameEncoder)
+import Obelisk.OAuth.State (OAuthState, oAuthStateAsText)
+import Obelisk.Route
 
-import           Obelisk.OAuth.Config  (AuthorizationResponseType (..),
-                                        OAuthConfig (..))
+import Obelisk.OAuth.Config (AuthorizationResponseType (..), OAuthConfig (..))
 
 -- | Request going to an authorization server/provider.
 data AuthorizationRequest provider = AuthorizationRequest
