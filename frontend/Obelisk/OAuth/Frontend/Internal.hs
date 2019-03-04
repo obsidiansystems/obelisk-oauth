@@ -19,17 +19,7 @@
 -}
 module Obelisk.OAuth.Frontend.Internal where
 
-import Control.Lens
 import Reflex
-
-makeReflexLenses =
-  makeLensesWith
-    ( classyRules
-        & generateLazyPatterns .~ True
-        & createClass .~ True
-    )
-
-
 
 tagOnPostBuild :: PostBuild t m => Dynamic t a -> m (Event t a)
 tagOnPostBuild v = do

@@ -41,12 +41,11 @@ import Prelude hiding ((.))
 
 import Control.Category ((.))
 import Data.Functor.Identity (Identity (..))
-import Data.Functor.Sum (Sum (..))
 import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as T
 
-import Obelisk.OAuth.Route (OAuthClientId (..), OAuthRoute (..), redirectUriParamsPageNameEncoder)
+import Obelisk.OAuth.Route (OAuthClientId (..), OAuthRoute (..))
 import Obelisk.OAuth.State (OAuthState, oAuthStateAsText)
 import Obelisk.Route
 import Obelisk.OAuth.Config (AuthorizationResponseType (..), OAuthConfig (..), ProviderConfig (..))

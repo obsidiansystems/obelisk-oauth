@@ -19,6 +19,7 @@ library
   other-modules:    Obelisk.OAuth.Frontend.Storage
                   , Obelisk.OAuth.Frontend.Internal
                   , Obelisk.OAuth.AuthorizationRequest
+                  , Obelisk.OAuth.Frontend.Command
   -- other-extensions:
   build-depends:    base >=4.11 && <4.12
                   , obelisk-oauth-common
@@ -33,6 +34,7 @@ library
                   , dependent-sum
                   , containers
                   , these
+                  , free
 
 
   -- hs-source-dirs:

@@ -15,6 +15,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 {-| Reflex component for handling `OAuth` oAuthFrontend.
 
@@ -32,33 +33,27 @@ module Obelisk.OAuth.Frontend
   , retrieveToken
   ) where
 
-import Control.Lens
 import Control.Monad.Fix (MonadFix)
-import Control.Monad ((<=<), void)
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad (void)
+import Control.Monad.IO.Class (MonadIO)
 import Data.Dependent.Sum (DSum ((:=>)))
 import Data.Functor.Identity (Identity (..))
-import Data.Functor.Identity (Identity)
-import Data.Functor.Sum (Sum (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import qualified GHCJS.DOM as DOM
 import qualified GHCJS.DOM.Window as Window
 import Language.Javascript.JSaddle (MonadJSM)
-import Obelisk.Route (Encoder, PageName, R)
+import Obelisk.Route (R)
 import Reflex
-import qualified Data.Map as Map
-import Data.These (These (..))
-import Data.Align (alignWith)
 
 import Obelisk.OAuth.Config (OAuthConfig (..), ProviderConfig (..), AuthorizationResponseType (..))
 import Obelisk.OAuth.Provider (OAuthProvider (..), oAuthProviderFromIdErr)
 import Obelisk.OAuth.Error (OAuthError (..))
-import Obelisk.OAuth.Frontend.Internal (makeReflexLenses, tagOnPostBuild)
+import Obelisk.OAuth.Frontend.Internal (tagOnPostBuild)
 import Obelisk.OAuth.AuthorizationRequest (authorizationRequestHref, AuthorizationRequest (..))
 import Obelisk.OAuth.Route (OAuthRoute (..), AccessToken (..), RedirectUriParams (..), OAuthCode (..))
 import Obelisk.OAuth.State (OAuthState, genOAuthState)
-import Obelisk.OAuth.Api (OAuthRequest (..), OAuthBackendRequest (..))
+import Obelisk.OAuth.Frontend.Command
 
 
 data OAuthFrontendConfig provider t = OAuthFrontendConfig
@@ -72,19 +67,19 @@ data OAuthFrontendConfig provider t = OAuthFrontendConfig
   deriving Generic
 
 
-data OAuthFrontend provider t = OAuthFrontend
+newtype OAuthFrontend provider t = OAuthFrontend
   { _oAuthFrontend_authorized :: Event t (Either OAuthError (provider, AccessToken))
     -- ^ Event gets triggered after authorization is completed, with either an
     -- error or the token to be used for API requests.
   }
   deriving Generic
 
-data OAuthResponse a = OAuthResponse (OAuthRequest a) a
 
-type SupportsOAuth t m =
+type SupportsOAuth t m provider =
   ( Reflex t, MonadIO m, MonadHold t m, MonadJSM m, PostBuild t m
   , PerformEvent t m , MonadJSM (Performable m), MonadFix m
-  , Requester t m, Request m ~ OAuthRequest, Response m ~ OAuthResponse
+  , Requester t m, Request m ~ Command provider, Response m ~ Identity
+  , OAuthProvider provider
   )
 
 
@@ -94,14 +89,18 @@ type SupportsOAuth t m =
 --   state. The storage key `show $ StoreOAuth_State
 --   _oAuthConfig_provider` is used for storing this state.
 makeOAuthFrontend
-  :: (SupportsOAuth t m, OAuthProvider provider)
+  :: (SupportsOAuth t m provider)
   => OAuthConfig provider
   -> OAuthFrontendConfig provider t
   -> m (OAuthFrontend provider t)
 makeOAuthFrontend sCfg cfg = do
+
   onErrParams <- retrieveCode sCfg cfg
+
   let (onErr, onParams) = fanEither onErrParams
+
   eToken <- retrieveToken sCfg onParams
+
   pure $ OAuthFrontend $ leftmost
     [ Left <$> onErr
     , eToken
@@ -113,13 +112,13 @@ makeOAuthFrontend sCfg cfg = do
 --
 --   State will be properly generated and checked.
 retrieveCode
-  :: forall t m provider. (SupportsOAuth t m, OAuthProvider provider)
+  :: forall t m provider. (SupportsOAuth t m provider)
   => OAuthConfig provider
   -> OAuthFrontendConfig provider t
   -> m (Event t (Either OAuthError (provider, RedirectUriParams)))
 retrieveCode sCfg (OAuthFrontendConfig onAuth route) = do
 
-    onReqState <- storeStateOnRequest onAuth
+    onReqState <- getStoredStateOnRequest onAuth
     performEvent_ $ doAuthorize sCfg <$> onReqState
 
     onRoute <- fmapMaybe id <$> tagOnPostBuild route
@@ -127,31 +126,20 @@ retrieveCode sCfg (OAuthFrontendConfig onAuth route) = do
     let
       (onErr, onParams) = fanEither $ getParams <$> onRoute
 
-    onStoreResp <-
-      requesting $ OAuthRequest_LoadState . oAuthProviderId . fst <$> onParams
-
-    let
-      onMStoredState = ffor onStoreResp $ \case
-        OAuthResponse (OAuthRequest_LoadState provId) mState -> (provId, mState)
-        _ -> error "Unexpected response to `OAuthRequest_LoadState`"
-
-    onParamsStored :: Event t ((provider, RedirectUriParams), Maybe OAuthState)
-      <- getReqResp
-          (oAuthProviderId . fst)
-          onParams
-          onMStoredState
-
-    -- Clean up after ourselves:
-    requesting_ $ OAuthRequest_RemoveState . oAuthProviderId . fst . fst <$> onParamsStored
+    onParamsVerified <-
+      requestingIdentity $ ffor onParams $ \params -> do
+        mOldState <- command_loadState $ fst params
+        command_removeState $ fst params -- Clean up.
+        pure $ checkState params mOldState
 
     pure $ leftmost
       [ Left <$> onErr
-      , uncurry checkState <$> onParamsStored
+      , onParamsVerified
       ]
 
   where
     checkState _ Nothing = Left OAuthError_NoSessionState
-    checkState ps@(_, RedirectUriParams c new) (Just old) = if new == old
+    checkState ps@(_, RedirectUriParams _ new) (Just old) = if new == old
       then Right ps
       else Left OAuthError_InvalidState
 
@@ -164,28 +152,20 @@ retrieveCode sCfg (OAuthFrontendConfig onAuth route) = do
 
 
 -- | Get an `OAuthState` to a request and make sure it is stored.
-storeStateOnRequest
+getStoredStateOnRequest
   :: forall m t provider
-  . (SupportsOAuth t m, OAuthProvider provider)
+  . (SupportsOAuth t m provider)
   => Event t (AuthorizationRequest provider)
   -> m (Event t (AuthorizationRequest provider, OAuthState))
-storeStateOnRequest onReq = do
+getStoredStateOnRequest onReq = do
 
-  reqUnsavedState <- performEvent $ ffor onReq $ \req -> do
+  onUnsavedState <- performEvent $ ffor onReq $ \req -> do
     s <- genOAuthState
-    pure (oAuthProviderId $ _authorizationRequest_provider req, s)
+    pure (req, s)
 
-  r <- requesting $ uncurry OAuthRequest_StoreState <$> reqUnsavedState
-
-  let
-    onResp = fmapMaybe id . ffor r $ \case
-      OAuthResponse (OAuthRequest_StoreState provId storedState) () -> Just (provId, storedState)
-      _ -> Nothing
-
-  getReqResp
-    (oAuthProviderId . _authorizationRequest_provider)
-    onReq
-    onResp
+  requestingIdentity $ ffor onUnsavedState $ \rs@(req, s) -> do
+    command_storeState (_authorizationRequest_provider req) s
+    pure rs
 
 
 -- | Build request uri and forward user to authorization server.
@@ -206,60 +186,17 @@ doAuthorize sCfg (req, oState) = do
 
 -- | Retrieves access token based on redirect values.
 retrieveToken
-  :: (SupportsOAuth t m, OAuthProvider provider)
+  :: (SupportsOAuth t m provider)
   => OAuthConfig provider
   -> Event t (provider, RedirectUriParams)
   -> m (Event t (Either OAuthError (provider, AccessToken)))
-retrieveToken sCfg onParams = do
-    let
-      mkReq (p, ps) = OAuthRequest_Backend $ OAuthBackendRequest_GetToken (oAuthProviderId p) ps
+retrieveToken sCfg onParams =
+  requestingIdentity $ ffor onParams $ \(provider, params) -> do
 
-      (onDirectToken, onParamsReq) = fanEither $ ffor onParams $ \ps@(provider, RedirectUriParams code state) ->
-        let
-          rType = _providerConfig_responseType . _oAuthConfig_providers sCfg $ provider
-        in
-          case rType of
-            AuthorizationResponseType_Token -> Left (provider, AccessToken . unOAuthCode $ code)
-            AuthorizationResponseType_Code  -> Right ps
+    let rType = _providerConfig_responseType . _oAuthConfig_providers sCfg $ provider
 
-    eTokenRsp <- requesting $ mkReq <$> onParamsReq
-    let
-      eToken = ffor eTokenRsp $ \case
-        OAuthResponse (OAuthRequest_Backend (OAuthBackendRequest_GetToken provId _)) errToken ->
-          (,) <$> oAuthProviderFromIdErr provId <*> errToken
-
-    pure $ leftmost
-      [ Right <$> onDirectToken
-      , eToken
-      ]
-
-
--- | Get a response munched together with it's corresponding request.
---
---   TODO: What to do with multiple identical requests?
-getReqResp
-  :: (Eq reqId, Ord reqId, MonadHold t m, Reflex t, MonadFix m)
-  => (req -> reqId)
-  -> Event t req
-  -> Event t (reqId, resp)
-  -> m (Event t (req, resp))
-getReqResp getReqId onReq onResp = mdo
-
-    reqs <- foldDyn id Map.empty $ mergeWith (.)
-      [ ffor onResp $
-          \(reqId, _) -> Map.delete reqId
-
-      , ffor onReq insertReq
-      ]
-
-    -- Handle coincidence of request and response properly:
-    pure $ fmapMaybe id $ alignWith buildResponse onReq $ attach (current reqs) onResp
-
-  where
-    insertReq r = Map.insert (getReqId r) r
-
-    buildResponse = \case
-      This _ -> Nothing
-      That (cReqs, (reqId, res)) -> (, res) <$> Map.lookup reqId cReqs
-      These req (cReqs, res) ->
-        buildResponse $ That (insertReq req cReqs, res)
+    case rType of
+      AuthorizationResponseType_Token ->
+        pure $ Right (provider, AccessToken . unOAuthCode . _redirectUriParams_code $ params)
+      AuthorizationResponseType_Code  ->
+        fmap (provider, ) <$> command_getToken provider params
