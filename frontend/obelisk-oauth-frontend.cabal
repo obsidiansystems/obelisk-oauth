@@ -15,11 +15,11 @@ cabal-version:       >=1.10
 library
   ghc-options: -Wall
   exposed-modules:  Obelisk.OAuth.Frontend
-
-  other-modules:    Obelisk.OAuth.Frontend.Storage
+                  , Obelisk.OAuth.Frontend.Storage
                   , Obelisk.OAuth.Frontend.Internal
                   , Obelisk.OAuth.AuthorizationRequest
                   , Obelisk.OAuth.Frontend.Command
+
   -- other-extensions:
   build-depends:    base >=4.11 && <4.12
                   , obelisk-oauth-common
