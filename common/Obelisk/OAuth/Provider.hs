@@ -16,7 +16,7 @@
 -}
 module Obelisk.OAuth.Provider
   ( OAuthProviderId (..)
-  , OAuthProvider (..)
+  , IsOAuthProvider (..)
   , oAuthProviderFromIdErr
   ) where
 
@@ -32,8 +32,8 @@ newtype OAuthProviderId = OAuthProviderId { unOAuthProviderId :: Text }
   deriving (Eq, Ord, Show, Read, ToJSON, FromJSON, IsString)
 
 
--- | Class of types that are suitable as `OAuthProvider`.
-class (Eq p, Ord p, Show p) => OAuthProvider p where
+-- | Class of types that are suitable as `IsOAuthProvider`.
+class (Eq p, Ord p, Show p) => IsOAuthProvider p where
 
   -- | Some string/name for identifying a provider. Also used for namespacing
   --   in requests and storage.
@@ -43,7 +43,7 @@ class (Eq p, Ord p, Show p) => OAuthProvider p where
 
   -- | Get the provider back from its text representation.
   --
-  --   Proxy needed, as otherwise `OAuthProvider` could not be an instance of this class.
+  --   Proxy needed, as otherwise `IsOAuthProvider` could not be an instance of this class.
   oAuthProviderFromId :: OAuthProviderId -> Maybe p
 
   -- | Endpoint URI for forwarding the user to to issue the authorization.
@@ -65,5 +65,5 @@ class (Eq p, Ord p, Show p) => OAuthProvider p where
   oAuthAccessTokenEndpoint :: p -> Text
 
 -- | Parse a provider id in an OAuthError error monad.
-oAuthProviderFromIdErr :: (MonadError OAuthError m, OAuthProvider provider) => OAuthProviderId -> m provider
+oAuthProviderFromIdErr :: (MonadError OAuthError m, IsOAuthProvider provider) => OAuthProviderId -> m provider
 oAuthProviderFromIdErr = maybe (throwError OAuthError_InvalidProviderId) pure . oAuthProviderFromId

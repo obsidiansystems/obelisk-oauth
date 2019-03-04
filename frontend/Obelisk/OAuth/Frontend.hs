@@ -47,7 +47,7 @@ import Obelisk.Route (R)
 import Reflex
 
 import Obelisk.OAuth.Config (OAuthConfig (..), ProviderConfig (..), AuthorizationResponseType (..))
-import Obelisk.OAuth.Provider (OAuthProvider (..), oAuthProviderFromIdErr)
+import Obelisk.OAuth.Provider (IsOAuthProvider (..), oAuthProviderFromIdErr)
 import Obelisk.OAuth.Error (OAuthError (..))
 import Obelisk.OAuth.Frontend.Internal (tagOnPostBuild)
 import Obelisk.OAuth.AuthorizationRequest (authorizationRequestHref, AuthorizationRequest (..))
@@ -79,7 +79,7 @@ type SupportsOAuth t m provider =
   ( Reflex t, MonadIO m, MonadHold t m, MonadJSM m, PostBuild t m
   , PerformEvent t m , MonadJSM (Performable m), MonadFix m
   , Requester t m, Request m ~ Command provider, Response m ~ Identity
-  , OAuthProvider provider
+  , IsOAuthProvider provider
   )
 
 
@@ -171,7 +171,7 @@ getStoredStateOnRequest onReq = do
 -- | Build request uri and forward user to authorization server.
 --
 doAuthorize
-  :: (MonadIO m, MonadJSM m, OAuthProvider provider)
+  :: (MonadIO m, MonadJSM m, IsOAuthProvider provider)
   => OAuthConfig provider
   -> (AuthorizationRequest provider, OAuthState)
   -> m ()

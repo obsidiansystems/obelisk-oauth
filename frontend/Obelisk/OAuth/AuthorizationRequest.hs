@@ -64,7 +64,7 @@ data AuthorizationRequest provider = AuthorizationRequest
 --
 --   This should be all you need from this module in most cases.
 authorizationRequestHref
-  :: OAuthProvider provider
+  :: IsOAuthProvider provider
   => OAuthConfig provider
   -> AuthorizationRequest provider
   -> OAuthState
@@ -80,7 +80,7 @@ authorizationRequestHref cfg req state =
 -- <https://tools.ietf.org/html/rfc6749#section-4.1.1 4.1.1> of the
 -- specification.  This does not insert a leading @?@.
 authorizationRequestParams
-  :: OAuthProvider provider
+  :: IsOAuthProvider provider
   => OAuthConfig provider
   -> AuthorizationRequest provider
   -> OAuthState
