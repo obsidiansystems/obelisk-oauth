@@ -22,16 +22,11 @@
 module Obelisk.OAuth.Frontend
   ( -- * Basic interface
     OAuthFrontendConfig (..)
-  , HasOAuthFrontendConfig (..)
   , OAuthFrontend (..)
-  , HasOAuthFrontend (..)
-  , TokenGetter
-  , makeOAuthFrontendExeCfg
   , makeOAuthFrontend
     -- * Needed constraints
   , SupportsOAuth
     -- * Implementation details (probably should not be exported here at all - use with care.)
-  , StoreOAuth (..)
   , retrieveCode
   , doAuthorize
   , retrieveToken
@@ -60,7 +55,6 @@ import Obelisk.OAuth.Config (OAuthConfig (..), ProviderConfig (..), Authorizatio
 import Obelisk.OAuth.Provider (OAuthProvider (..), oAuthProviderFromIdErr)
 import Obelisk.OAuth.Error (OAuthError (..))
 import Obelisk.OAuth.Frontend.Internal (makeReflexLenses, tagOnPostBuild)
-import Obelisk.OAuth.Frontend.Storage
 import Obelisk.OAuth.AuthorizationRequest (authorizationRequestHref, AuthorizationRequest (..))
 import Obelisk.OAuth.Route (OAuthRoute (..), AccessToken (..), RedirectUriParams (..), OAuthCode (..))
 import Obelisk.OAuth.State (OAuthState, genOAuthState)
@@ -89,7 +83,7 @@ data OAuthResponse a = OAuthResponse (OAuthRequest a) a
 
 type SupportsOAuth t m =
   ( Reflex t, MonadIO m, MonadHold t m, MonadJSM m, PostBuild t m
-  , PerformEvent t m , MonadJSM (Performable m)
+  , PerformEvent t m , MonadJSM (Performable m), MonadFix m
   , Requester t m, Request m ~ OAuthRequest, Response m ~ OAuthResponse
   )
 
@@ -137,13 +131,13 @@ retrieveCode sCfg (OAuthFrontendConfig onAuth route) = do
       requesting $ OAuthRequest_LoadState . oAuthProviderId . fst <$> onParams
 
     let
-      onMStoredState = fmapMaybe id . ffor onStoreResp $ \case
-        OAuthResponse (OAuthRequest_LoadState provId) mState -> Just (provId, mState)
-        _ -> Nothing
+      onMStoredState = ffor onStoreResp $ \case
+        OAuthResponse (OAuthRequest_LoadState provId) mState -> (provId, mState)
+        _ -> error "Unexpected response to `OAuthRequest_LoadState`"
 
     onParamsStored :: Event t ((provider, RedirectUriParams), Maybe OAuthState)
       <- getReqResp
-          (oAuthProviderId . _authorizationRequest_provider . fst)
+          (oAuthProviderId . fst)
           onParams
           onMStoredState
 
@@ -165,21 +159,23 @@ retrieveCode sCfg (OAuthFrontendConfig onAuth route) = do
     getParams = \case
       OAuthRoute_Redirect :=> Identity (providerId, Just pars) ->
         (, pars) <$> oAuthProviderFromIdErr providerId
-      OAuthRoute_Redirect :=> Identity Nothing ->
+      OAuthRoute_Redirect :=> Identity (_, Nothing) ->
         Left OAuthError_MissingCodeState
 
 
 -- | Get an `OAuthState` to a request and make sure it is stored.
 storeStateOnRequest
   :: forall m t provider
-  . (Reflex t, MonadHold t m, MonadFix m, OAuthProvider provider)
+  . (SupportsOAuth t m, OAuthProvider provider)
   => Event t (AuthorizationRequest provider)
   -> m (Event t (AuthorizationRequest provider, OAuthState))
 storeStateOnRequest onReq = do
 
-  unsavedCode <- performEvent $ genOAuthState <$ onReq
+  reqUnsavedState <- performEvent $ ffor onReq $ \req -> do
+    s <- genOAuthState
+    pure (oAuthProviderId $ _authorizationRequest_provider req, s)
 
-  r <- requesting $ OAuthRequest_StoreState providerId <$> unsavedCode
+  r <- requesting $ uncurry OAuthRequest_StoreState <$> reqUnsavedState
 
   let
     onResp = fmapMaybe id . ffor r $ \case
@@ -228,11 +224,9 @@ retrieveToken sCfg onParams = do
 
     eTokenRsp <- requesting $ mkReq <$> onParamsReq
     let
-      eToken = fmapMaybe id $ ffor eTokenRsp $ \case
+      eToken = ffor eTokenRsp $ \case
         OAuthResponse (OAuthRequest_Backend (OAuthBackendRequest_GetToken provId _)) errToken ->
-          Just $ (,) <$> oAuthProviderFromIdErr provId <*> errToken
-        _ ->
-          Nothing
+          (,) <$> oAuthProviderFromIdErr provId <*> errToken
 
     pure $ leftmost
       [ Right <$> onDirectToken

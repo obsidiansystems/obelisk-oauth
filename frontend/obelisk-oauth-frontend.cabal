@@ -13,6 +13,7 @@ extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
 library
+  ghc-options: -Wall
   exposed-modules:  Obelisk.OAuth.Frontend
 
   other-modules:    Obelisk.OAuth.Frontend.Storage
