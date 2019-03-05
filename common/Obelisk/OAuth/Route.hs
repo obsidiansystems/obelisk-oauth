@@ -71,6 +71,9 @@ data RedirectUriParams = RedirectUriParams
   }
   deriving (Show, Read, Eq, Ord, Generic)
 
+instance ToJSON RedirectUriParams
+instance FromJSON RedirectUriParams
+
 
 -- | The OAuth routes necessary for authorization code grants. This should be
 --   made a sub-route of the client application frontend routes.
