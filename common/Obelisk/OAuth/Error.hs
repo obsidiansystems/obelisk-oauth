@@ -23,6 +23,8 @@ module Obelisk.OAuth.Error
 
 
 import Data.Text (Text)
+import GHC.Generics (Generic)
+import Data.Aeson (FromJSON, ToJSON)
 
 
 data OAuthError
@@ -35,6 +37,13 @@ data OAuthError
     -- state in session storage.
   | OAuthError_InvalidProviderId
     -- ^ We received a redirect/request to an unknown provider id.
+  | OAuthError_InvalidResponse
+    -- ^ Server answered with response that could not be parsed.
+  deriving (Generic, Show, Read, Eq, Ord)
+
+
+instance ToJSON OAuthError
+instance FromJSON OAuthError
 
 
 textOAuthError :: OAuthError -> Text
@@ -47,3 +56,5 @@ textOAuthError = ("ERROR: " <>) .  \case
     -> "We received a redirect from the authorization provider, but found no state to match too in session storage."
   OAuthError_InvalidProviderId
     -> "The provider id we received (redirect/backend request) was invalid."
+  OAuthError_InvalidResponse
+    -> "The server response could not be parsed."
