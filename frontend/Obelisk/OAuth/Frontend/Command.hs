@@ -54,6 +54,17 @@ data CommandF provider next
   -- `tokenFromDirectResponse`.
   deriving (Functor)
 
+{- -- Can we re-use an api specification as Free monad? -}
+{- newtype CommandF next = -}
+{-   forall a. Command (OAuthRequest a) (a -> next) -}
+
+{- interpreter = \case -}
+{-   Free (Command req@(Req1 a b c) getNext) -> sendReq req >>= getNext -}
+
+{- commandReq1 :: MonadFree (CommandF provider) m => a -> b -> c -> m r -}
+{- commandReq1 a b c = liftF $ Command (Req1 a b c) id -}
+
+
 command_storeState :: MonadFree (CommandF provider) m => provider -> OAuthState -> m ()
 command_storeState p s = liftF $ CommandF_StoreState p s ()
 
