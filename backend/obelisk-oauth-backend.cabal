@@ -16,11 +16,17 @@ library
     Obelisk.OAuth.Backend
   other-extensions: OverloadedStrings
   build-depends:
-    base >=4.11,
-    bytestring >=0.10,
-    http-client,
-    obelisk-oauth-common,
-    obelisk-route,
-    text >=1.2
+      base >=4.11
+    , bytestring >=0.10
+    , http-client
+    , obelisk-oauth-common
+    , obelisk-route
+    , text >=1.2
+    , lens
+    , lens-aeson
+    , aeson
+    , case-insensitive
+    , http-types
+
   default-language: Haskell2010
   ghc-options: -Wall

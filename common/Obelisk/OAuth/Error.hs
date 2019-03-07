@@ -23,10 +23,14 @@ module Obelisk.OAuth.Error
 
 
 import Data.Text (Text)
+import qualified Data.Text as T
 import GHC.Generics (Generic)
 import Data.Aeson (FromJSON, ToJSON)
 
 
+-- | Errors that can occur during OAuth handshake.
+--
+--   TODO: Make errors more descriptive (add parameters where it makes sense).
 data OAuthError
   = OAuthError_MissingCodeState
     -- ^ OAuth route was hit with missing required parameters (code, state).
@@ -39,6 +43,9 @@ data OAuthError
     -- ^ We received a redirect/request to an unknown provider id.
   | OAuthError_InvalidResponse
     -- ^ Server answered with response that could not be parsed.
+  | OAuthError_GetAccessTokenFailed (Int, Text)
+    -- ^ Retrieving the access token from authorization server failed with
+    -- given HTTP status code and message.
   deriving (Generic, Show, Read, Eq, Ord)
 
 
@@ -57,4 +64,6 @@ textOAuthError = ("ERROR: " <>) .  \case
   OAuthError_InvalidProviderId
     -> "The provider id we received (redirect/backend request) was invalid."
   OAuthError_InvalidResponse
-    -> "The server response could not be parsed."
+    -> "Some server response could not be parsed."
+  OAuthError_GetAccessTokenFailed (code, msg)
+    -> "Retrieving access token failed (" <> (T.pack . show) code <> "): '" <> msg <> "'."
