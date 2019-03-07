@@ -29,6 +29,8 @@ unsafeMkOAuthState = OAuthState
 -- | Get a `Text` representation of `OAuthState`.
 --
 --   Useful for serialization/encoding purposes.
+--   TODO: Rename to unOAuthState for consistency - rename above unOAuthState
+--   tu something like unsafeUnOAuthState.
 oAuthStateAsText :: OAuthState -> Text
 oAuthStateAsText = unOAuthState
 
