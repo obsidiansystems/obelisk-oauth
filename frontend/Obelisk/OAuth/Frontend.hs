@@ -61,6 +61,8 @@ data OAuthFrontendConfig provider t = OAuthFrontendConfig
     -- ^ Initiate authorization. This will forward the user to the
     --   authorization provider/server - thus after triggering this event the user will
     --   leave the application. Make sure you to save any important data!
+    --   TODO: Block multiple concurrent requests with error as this can't work
+    --   because of the redirect and overrides.
   , _oAuthFrontendConfig_route     :: Dynamic t (Maybe (R OAuthRoute))
     -- ^ Get route updates that are relevant to OAuth.
   }
@@ -71,6 +73,7 @@ newtype OAuthFrontend provider t = OAuthFrontend
   { _oAuthFrontend_authorized :: Event t (Either OAuthError (provider, AccessToken))
     -- ^ Event gets triggered after authorization is completed, with either an
     -- error or the token to be used for API requests.
+    -- TODO: Not only return access token, but also token type and scope.
   }
   deriving Generic
 

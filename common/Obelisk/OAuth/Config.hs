@@ -87,6 +87,7 @@ data ProviderConfig = ProviderConfig
     -- the OAuth handshake.
   }
 
+
 -- | Configuration for an OAuth authorization provider.
 data OAuthConfig provider = OAuthConfig
   { _oAuthConfig_renderRedirectUri  :: Maybe (R OAuthRoute -> Text)
@@ -107,3 +108,4 @@ data OAuthConfig provider = OAuthConfig
     -- used by the backend to authenticate to the authorization server.
   }
   deriving Generic
+

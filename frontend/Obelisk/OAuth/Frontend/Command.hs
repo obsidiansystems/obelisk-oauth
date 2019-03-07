@@ -52,6 +52,8 @@ data CommandF provider next
   -- secure `AuthorizationResponseType_Token` you can skip the backend
   -- implementation and implement this command by means of
   -- `tokenFromDirectResponse`.
+  -- TODO: Is the Token variant really that easy? What about the returned
+  -- scopes and the token type? -> Check standard!
   deriving (Functor)
 
 {- -- Can we re-use an api specification as Free monad? -}
