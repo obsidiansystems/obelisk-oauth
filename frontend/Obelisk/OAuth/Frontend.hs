@@ -45,6 +45,7 @@ import qualified GHCJS.DOM.Window as Window
 import Language.Javascript.JSaddle (MonadJSM)
 import Obelisk.Route (R)
 import Reflex
+import Data.Maybe (isJust)
 
 import Obelisk.OAuth.Config (OAuthConfig (..), ProviderConfig (..), AuthorizationResponseType (..))
 import Obelisk.OAuth.Provider (IsOAuthProvider (..), oAuthProviderFromIdErr)
@@ -62,9 +63,16 @@ data OAuthFrontendConfig provider t = OAuthFrontendConfig
     --   authorization provider/server - thus after triggering this event the user will
     --   leave the application. Make sure you to save any important data!
     --   TODO: Block multiple concurrent requests with error as this can't work
-    --   because of the redirect and overrides.
+    --   because of the redirect and overrides. UPDATE: We are blocking
+    --   multiple concurrent requests .... but without error as at least for
+    --   pact-web this is what we want. (More general would be of course with
+    --   error, as errors can always be ignored.)
   , _oAuthFrontendConfig_route     :: Dynamic t (Maybe (R OAuthRoute))
     -- ^ Get route updates that are relevant to OAuth.
+    --   Make sure `_oAuthFrontendConfig_route` becomes `Nothing` after
+    --   `_oAuthFrontend_authorized` triggers, as
+    --   `_oAuthFrontendConfig_authorize` events will be ignored up until then
+    --   (to make sure the handshake won't get interrupted).
   }
   deriving Generic
 
@@ -119,7 +127,15 @@ retrieveCode
   => OAuthConfig provider
   -> OAuthFrontendConfig provider t
   -> m (Event t (Either OAuthError (provider, RedirectUriParams)))
-retrieveCode sCfg (OAuthFrontendConfig onAuth route) = do
+retrieveCode sCfg (OAuthFrontendConfig onAuthBrutal route) = do
+
+    -- Block auth requests that are in the middle of an authorization handshake:
+    rec let
+          retrievingToken = isJust <$> current route
+          onAuth = gate ((\ a b -> not (a || b)) <$> retrievingToken <*> authRequested) onAuthBrutal
+        -- No need to unset as we are going leave the page:
+        authRequested <- hold False $ True <$ onAuth
+
 
     onReqState <- getStoredStateOnRequest onAuth
     performEvent_ $ doAuthorize sCfg <$> onReqState
