@@ -73,6 +73,8 @@ data OAuthFrontendConfig provider t = OAuthFrontendConfig
     --   `_oAuthFrontend_authorized` triggers, as
     --   `_oAuthFrontendConfig_authorize` events will be ignored up until then
     --   (to make sure the handshake won't get interrupted).
+    --   TODO: Shall we integrate that route update into obelisk-oauth somehow,
+    --   to prevent some cause of possible confusion/bugs?
   }
   deriving Generic
 
