@@ -64,7 +64,7 @@ textOAuthError = ("ERROR: " <>) .  \case
   OAuthError_InvalidState
     -> "We got a state from the authorization provider that did not match the one we sent."
   OAuthError_NoSessionState
-    -> "We received a redirect from the authorization provider, but found no state to match too in session storage."
+    -> "We received a redirect from the authorization provider, but found no state to match to in session storage."
   OAuthError_InvalidProviderId
     -> "The provider id we received (redirect/backend request) was invalid."
   OAuthError_InvalidResponse
