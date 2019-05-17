@@ -92,7 +92,7 @@ In your backend handler, you'll need to handle the OAuth sub-route you created:
 ...
 serve $ \case
   BackendRoute_OAuth :/ oauthRoute -> case oauthRoute of
-    OAuth_RedirectUri :/ redirectParams -> case params of
+    OAuth_RedirectUri :/ redirectParams -> case redirectParams of
       Nothing -> liftIO $ error "Expected to receive the authorization code here"
       Just (RedirectUriParams code mstate) -> do
         let t = TokenRequest
