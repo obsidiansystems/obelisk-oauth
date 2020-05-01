@@ -2,7 +2,9 @@
 
 ## Setup
 
-This repo contains two packages: obelisk-oauth-common and obelisk-oauth-backend.
+This repo contains two packages: `obelisk-oauth-common` and `obelisk-oauth-backend`.
+
+An example usage of these packages is available in the `example` directory.
 
 To add these packages to your obelisk project, follow the steps below from your obelisk project root (i.e., the folder you ran `ob init` in).
 
@@ -14,15 +16,7 @@ $ git clone git@github.com:obsidian.systems/obelisk-oauth
 $ ob thunk pack obelisk-oauth
 ```
 
-The last step here (`ob thunk pack`) replaces the cloned repository with a "thunk" that contains all the information obelisk needs to fetch/use the repository when needed. You should now see the following if you run `tree` from the `dep` folder.
-
-```bash
-$ tree
-.
-└── obelisk-oauth
-    ├── default.nix
-    └── github.json
-```
+The last step here (`ob thunk pack`) replaces the cloned repository with a "thunk" that contains all the information obelisk needs to fetch/use the repository when needed.
 
 Check out `ob thunk --help` to learn more about working with thunks.
 
@@ -33,8 +27,8 @@ Your skeleton project's `default.nix` uses the [reflex-platform project infrastr
 ```nix
 project ./. ({ hackGet, ... }: {
   packages = {
-    obelisk-oauth-common = (hackGet ./dep/obelisk-oauth) + "/common";
-    obelisk-oauth-backend = (hackGet ./dep/obelisk-oauth) + "/backend";
+    obelisk-oauth-common = (hackGet ./dep/obelisk-oauth) + /common;
+    obelisk-oauth-backend = (hackGet ./dep/obelisk-oauth) + /backend;
     ... # other configuration goes here
   };
 })
@@ -44,9 +38,9 @@ Be sure to add `hackGet` to the list of items to bring into scope. `hackGet` is 
 
 ### Add packages to cabal files
 
-Finally, add `obelisk-oauth-common` to the `build-depends` field of `common/common.cabal` and add `obelisk-oauth-backend` to the `build-depends` field of the library stanza in `backend/backend.cabal`.
+Finally, add `obelisk-oauth-common` to the `build-depends` field of `common/common.cabal` and add `obelisk-oauth-common` and `obelisk-oauth-backend` to the `build-depends` field of the library stanza in `backend/backend.cabal`.
 
-## Common.Route + Obelisk.OAuth.Authorization
+## `Common.Route` + `Obelisk.OAuth.Authorization`
 
 Add a sub-route to your backend route and embed the provided OAuth route:
 
