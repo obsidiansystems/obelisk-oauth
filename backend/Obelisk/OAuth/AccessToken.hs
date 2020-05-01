@@ -6,7 +6,6 @@ module Obelisk.OAuth.AccessToken where
 
 import Data.ByteString
 import Data.Functor.Identity
-import Data.Functor.Sum
 import Data.Text (Text)
 import qualified Data.Text.Encoding as T
 import Network.HTTP.Client (Request(..), parseRequest)
@@ -28,7 +27,7 @@ data TokenRequest r = TokenRequest
 getOauthToken
   :: String -- ^ Request url
   -> Text -- ^ Application route
-  -> Encoder Identity Identity (R (Sum r a)) PageName
+  -> Encoder Identity Identity (R (FullRoute r a)) PageName
   -> TokenRequest r
   -> IO Request
 getOauthToken reqUrl appRoute enc t = do

@@ -26,7 +26,6 @@ import Control.Category ((.))
 import Control.Category.Monoidal (coidl)
 import Control.Monad.Error.Class (MonadError)
 import Data.Functor.Identity (Identity(..))
-import Data.Functor.Sum (Sum(..))
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Text (Text)
@@ -81,7 +80,7 @@ deriving instance (Show (r (R OAuth))) => Show (AuthorizationRequest r)
 -- This does not insert a leading @?@.
 authorizationRequestParams
   :: Text -- ^ Base url
-  -> Encoder Identity Identity (R (Sum br a)) PageName
+  -> Encoder Identity Identity (R (FullRoute br a)) PageName
   -> AuthorizationRequest br
   -> Text
 authorizationRequestParams route enc ar = encode (queryParametersTextEncoder @Identity @Identity) $
@@ -106,7 +105,7 @@ authorizationRequestParams route enc ar = encode (queryParametersTextEncoder @Id
 -- route under which the OAuth routes are nested, construct the redirect URI's route (i.e.,
 -- the path and query string parts).
 renderRedirectUriRoute
-  :: Encoder Identity Identity (R (Sum br a)) PageName -- ^ Checked backend route encoder
+  :: Encoder Identity Identity (R (FullRoute br a)) PageName -- ^ Checked backend route encoder
   -> br (R OAuth) -- ^ OAuth parent route
   -> Text -- ^ Rendered route
 renderRedirectUriRoute enc r =
@@ -116,7 +115,7 @@ renderRedirectUriRoute enc r =
 -- (see 'checkEncoder'), render the redirect URI.
 renderRedirectUri
   :: Text -- ^ Application base url
-  -> Encoder Identity Identity (R (Sum br a)) PageName -- ^ Checked backend route encoder
+  -> Encoder Identity Identity (R (FullRoute br a)) PageName -- ^ Checked backend route encoder
   -> br (R OAuth) -- ^ OAuth parent route
   -> Text -- ^ Rendered redirect url
 renderRedirectUri base enc = (base <>) . renderRedirectUriRoute enc
@@ -125,7 +124,7 @@ renderRedirectUri base enc = (base <>) . renderRedirectUriRoute enc
 authorizationRequestHref
   :: Text -- ^ API request url
   -> Text -- ^ Base application route url
-  -> Encoder Identity Identity (R (Sum br a)) PageName -- ^ Backend route encoder
+  -> Encoder Identity Identity (R (FullRoute br a)) PageName -- ^ Backend route encoder
   -> AuthorizationRequest br
   -> Text -- ^ Authorization grant request endpoint with query string
 authorizationRequestHref reqUrl appUrl enc ar =
