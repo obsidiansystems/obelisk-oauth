@@ -1,0 +1,15 @@
+name: common
+version: 0.1
+cabal-version: >= 1.2
+build-type: Simple
+
+library
+  hs-source-dirs: src
+  build-depends: base
+               , mtl
+               , obelisk-oauth-common
+               , obelisk-route
+               , text
+  exposed-modules:
+    Common.Route
+  ghc-options: -Wall
