@@ -27,7 +27,7 @@ executable frontend
                , common
                , obelisk-frontend
                , obelisk-route
-               , reflex-dom-core
+               , reflex-dom
                , obelisk-generated-static
                , frontend
   --TODO: Make these ghc-options optional
