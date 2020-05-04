@@ -6,7 +6,6 @@ module Obelisk.OAuth.AccessToken where
 
 import Data.ByteString
 import Data.Functor.Identity
-import Data.Functor.Sum
 import Data.Text (Text)
 import qualified Data.Text.Encoding as T
 import Network.HTTP.Client (Request(..), parseRequest)
@@ -28,7 +27,7 @@ data TokenRequest r = TokenRequest
 getOauthToken
   :: String -- ^ Request url
   -> Text -- ^ Application route
-  -> Encoder Identity Identity (R (Sum r a)) PageName
+  -> Encoder Identity Identity (R (FullRoute r a)) PageName
   -> TokenRequest r
   -> IO Request
 getOauthToken reqUrl appRoute enc t = do
@@ -37,7 +36,7 @@ getOauthToken reqUrl appRoute enc t = do
         [ partBS "client_id" $ T.encodeUtf8 $ _tokenRequest_clientId t
         , partBS "client_secret" $ T.encodeUtf8 $ _tokenRequest_clientSecret t
         , partBS "redirect_uri" $ T.encodeUtf8 $
-            appRoute <> (renderBackendRoute enc $ _tokenRequest_redirectUri t :/ OAuth_RedirectUri :/ Nothing)
+            appRoute <> renderBackendRoute enc (_tokenRequest_redirectUri t :/ OAuth_RedirectUri :/ Nothing)
         ] ++ case _tokenRequest_grant t of
           TokenGrant_AuthorizationCode code ->
             [ partBS "grant_type" "authorization_code"

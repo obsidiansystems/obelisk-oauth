@@ -1,0 +1,35 @@
+name: backend
+version: 0.1
+cabal-version: >= 1.8
+build-type: Simple
+
+library
+  hs-source-dirs: src
+  if impl(ghcjs)
+    buildable: False
+  build-depends: base
+               , common
+               , containers
+               , frontend
+               , http-client
+               , http-client-tls
+               , obelisk-backend
+               , obelisk-executable-config-lookup
+               , obelisk-oauth-backend
+               , obelisk-oauth-common
+               , obelisk-route
+               , text
+  exposed-modules:
+    Backend
+  ghc-options: -Wall
+
+executable backend
+  main-is: main.hs
+  hs-source-dirs: src-bin
+  if impl(ghcjs)
+    buildable: False
+  build-depends: base
+               , backend
+               , common
+               , frontend
+               , obelisk-backend
