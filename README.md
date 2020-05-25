@@ -12,7 +12,7 @@ To add these packages to your obelisk project, follow the steps below from your 
 ```bash
 $ mkdir dep
 $ cd dep
-$ git clone git@github.com:obsidian.systems/obelisk-oauth
+$ git clone git@github.com:obsidiansystems/obelisk-oauth
 $ ob thunk pack obelisk-oauth
 ```
 
