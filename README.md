@@ -27,8 +27,8 @@ Your skeleton project's `default.nix` uses the [reflex-platform project infrastr
 ```nix
 project ./. ({ hackGet, ... }: {
   packages = {
-    obelisk-oauth-common = (hackGet ./dep/obelisk-oauth) + /common;
-    obelisk-oauth-backend = (hackGet ./dep/obelisk-oauth) + /backend;
+    obelisk-oauth-common = (hackGet ./dep/obelisk-oauth) + "/common";
+    obelisk-oauth-backend = (hackGet ./dep/obelisk-oauth) + "/backend";
     ... # other configuration goes here
   };
 })
