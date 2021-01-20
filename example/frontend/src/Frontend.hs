@@ -8,7 +8,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Obelisk.Frontend (Frontend (..))
 import Obelisk.Configs (getConfigs)
-import Obelisk.Route (R)
+import Obelisk.Route
 import Obelisk.OAuth.Authorization (AuthorizationRequest (..), AuthorizationResponseType (..), authorizationRequestHref)
 import Reflex.Dom.Core
 
@@ -30,7 +30,7 @@ frontend = Frontend
       let r = AuthorizationRequest
             { _authorizationRequest_responseType = AuthorizationResponseType_Code
             , _authorizationRequest_clientId = "fake-id"
-            , _authorizationRequest_redirectUri = Just BackendRoute_OAuth
+            , _authorizationRequest_redirectUri = Just $ \x -> BackendRoute_OAuth :/ x
             , _authorizationRequest_scope = []
             , _authorizationRequest_state = Just "none"
             }

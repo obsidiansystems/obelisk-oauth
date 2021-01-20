@@ -63,16 +63,14 @@ data AuthorizationRequest r = AuthorizationRequest
     -- ^ The type of authorization grant being requested. See 'AuthorizationResponseType'.
   , _authorizationRequest_clientId :: Text
     -- ^ The client application identifier, issued by the authorization server. See section <https://tools.ietf.org/html/rfc6749#section-2.2 of the spec.
-  , _authorizationRequest_redirectUri :: Maybe (r (R OAuth))
-    -- ^ The client application's callback URI, where it expects to receive the authorization code. See section <https://tools.ietf.org/html/rfc6749#section-3.1.2 3.1.2> of the spec. The @r@ represents the client application route of which the OAuth route will be a sub-route. TODO
+  , _authorizationRequest_redirectUri :: Maybe (R OAuth -> R r)
+    -- ^ The client application's callback URI, where it expects to receive the authorization code. See section <https://tools.ietf.org/html/rfc6749#section-3.1.2 3.1.2> of the spec. The @r@ represents the client application's route type, of which the OAuth route will be a sub-route.
   , _authorizationRequest_scope :: [Text]
     -- ^ See section <https://tools.ietf.org/html/rfc6749#section-3.3 3.3>, "Access Token Scope"
   , _authorizationRequest_state :: Maybe Text
     -- ^ This value will be returned to the client application when the resource server redirects the user to the redirect URI. See section <https://tools.ietf.org/html/rfc6749#section-10.12 10.12>.
   }
   deriving (Generic)
-
-deriving instance (Show (r (R OAuth))) => Show (AuthorizationRequest r)
 
 -- | Turn an 'AuthorizationRequest' into query string parameters separated by @&@. Key names are
 -- defined in <https://tools.ietf.org/html/rfc6749#section-4.1.1 4.1.1> of the specification.
@@ -91,7 +89,7 @@ authorizationRequestParams route enc ar = encode (queryParametersTextEncoder @Id
     , case _authorizationRequest_redirectUri ar of
         Nothing -> Map.empty
         Just r -> Map.singleton "redirect_uri" $
-          renderRedirectUri route enc r
+          route <> renderBackendRoute enc (r $ OAuth_RedirectUri :/ Nothing)
     , case _authorizationRequest_scope ar of
         [] -> Map.empty
         xs -> Map.singleton "scope" $ T.intercalate " " xs
@@ -99,25 +97,6 @@ authorizationRequestParams route enc ar = encode (queryParametersTextEncoder @Id
         Nothing -> Map.empty
         Just s -> Map.singleton "state" s
     ]
-
--- | Given a checked backend route encoder (see 'checkEncoder'), and the app-specific parent
--- route under which the OAuth routes are nested, construct the redirect URI's route (i.e.,
--- the path and query string parts).
-renderRedirectUriRoute
-  :: Encoder Identity Identity (R (FullRoute br a)) PageName -- ^ Checked backend route encoder
-  -> br (R OAuth) -- ^ OAuth parent route
-  -> Text -- ^ Rendered route
-renderRedirectUriRoute enc r =
-  renderBackendRoute enc $ r :/ OAuth_RedirectUri :/ Nothing
-
--- | Given the base URL  of the client application, a checked backend route encoder
--- (see 'checkEncoder'), render the redirect URI.
-renderRedirectUri
-  :: Text -- ^ Application base url
-  -> Encoder Identity Identity (R (FullRoute br a)) PageName -- ^ Checked backend route encoder
-  -> br (R OAuth) -- ^ OAuth parent route
-  -> Text -- ^ Rendered redirect url
-renderRedirectUri base enc = (base <>) . renderRedirectUriRoute enc
 
 -- | Render the authorization request
 authorizationRequestHref
