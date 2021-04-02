@@ -27,6 +27,7 @@ import Control.Monad.Error.Class (MonadError)
 import Data.Functor.Identity (Identity(..))
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.String
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
@@ -54,6 +55,13 @@ data AuthorizationResponseType = AuthorizationResponseType_Code -- Authorization
                                | AuthorizationResponseType_Token -- Implicit grant
   deriving (Show, Read, Eq, Ord, Generic)
 
+-- | The client type (user-agent or web server). Determines how the
+-- authorization server delivers the authorization response back to the client.
+-- The parameter value MUST be set to web_server or user_agent.
+-- See https://tools.ietf.org/id/draft-ietf-oauth-v2-07.html#user_authorization
+data AuthorizationRequestType = AuthorizationRequestType_WebServer
+                               | AuthorizationRequestType_UserAgent
+  deriving (Show, Read, Eq, Ord, Generic)
 
 -- | Fields of the authorization request, which will ultimately become query string
 -- parameters. Described in section <https://tools.ietf.org/html/rfc6749#section-4.1.1 4.11> of
@@ -69,6 +77,9 @@ data AuthorizationRequest r = AuthorizationRequest
     -- ^ See section <https://tools.ietf.org/html/rfc6749#section-3.3 3.3>, "Access Token Scope"
   , _authorizationRequest_state :: Maybe Text
     -- ^ This value will be returned to the client application when the resource server redirects the user to the redirect URI. See section <https://tools.ietf.org/html/rfc6749#section-10.12 10.12>.
+   , _authorizationRequest_type :: Maybe AuthorizationRequestType
+  -- ^ The client type (user agent or web server) performing the authentication request. This determines how the authorization server delivers its response. See https://tools.ietf.org/id/draft-ietf-oauth-v2-07.html#user_authorization
+
   }
   deriving (Generic)
 
@@ -96,7 +107,15 @@ authorizationRequestParams route enc ar = encode (queryParametersTextEncoder @Id
     , case _authorizationRequest_state ar of
         Nothing -> Map.empty
         Just s -> Map.singleton "state" s
+    , case _authorizationRequest_type ar of
+        Nothing -> Map.empty
+        Just t -> Map.singleton "type" $ authorizationRequestTypeToText t
     ]
+
+authorizationRequestTypeToText :: IsString a => AuthorizationRequestType -> a
+authorizationRequestTypeToText = \case
+  AuthorizationRequestType_UserAgent -> "user_agent"
+  AuthorizationRequestType_WebServer -> "web_server"
 
 -- | Render the authorization request
 authorizationRequestHref
