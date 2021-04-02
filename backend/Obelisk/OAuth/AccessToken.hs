@@ -21,7 +21,7 @@ data TokenRequest r = TokenRequest
   { _tokenRequest_grant :: TokenGrant
   , _tokenRequest_clientId :: Text
   , _tokenRequest_clientSecret :: Text
-  , _tokenRequest_redirectUri :: r (R OAuth)
+  , _tokenRequest_redirectUri :: (R OAuth -> R r)
   }
 
 getOauthToken
@@ -36,7 +36,7 @@ getOauthToken reqUrl appRoute enc t = do
         [ partBS "client_id" $ T.encodeUtf8 $ _tokenRequest_clientId t
         , partBS "client_secret" $ T.encodeUtf8 $ _tokenRequest_clientSecret t
         , partBS "redirect_uri" $ T.encodeUtf8 $
-            appRoute <> renderBackendRoute enc (_tokenRequest_redirectUri t :/ OAuth_RedirectUri :/ Nothing)
+            appRoute <> renderBackendRoute enc (_tokenRequest_redirectUri t $ OAuth_RedirectUri :/ Nothing)
         ] ++ case _tokenRequest_grant t of
           TokenGrant_AuthorizationCode code ->
             [ partBS "grant_type" "authorization_code"

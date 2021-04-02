@@ -33,7 +33,7 @@ backend = Backend
                   { _tokenRequest_grant = TokenGrant_AuthorizationCode $ T.encodeUtf8 code
                   , _tokenRequest_clientId = "fake-client-id" -- Get this from the OAuth authorization server
                   , _tokenRequest_clientSecret = "fake-client-secret" -- Get this from the OAuth authorization server
-                  , _tokenRequest_redirectUri = BackendRoute_OAuth
+                  , _tokenRequest_redirectUri = (\x -> BackendRoute_OAuth :/ x)
                   }
                 reqUrl = "https://app.asana.com/-/oauth_token"
             rsp <- liftIO $ flip Http.httpLbs tlsMgr =<< getOauthToken reqUrl route checkedEncoder t

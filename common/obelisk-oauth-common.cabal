@@ -1,6 +1,6 @@
 cabal-version: 2.0
 name: obelisk-oauth-common
-version: 0.1.0.0
+version: 0.2.0.0
 synopsis: OAuth helpers for Obelisk apps
 description: OAuth helpers for Obelisk apps
 license: BSD3
