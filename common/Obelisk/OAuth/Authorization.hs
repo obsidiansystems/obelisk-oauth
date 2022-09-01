@@ -30,6 +30,7 @@ import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
+import Network.URI
 
 import Obelisk.Route
 import Obelisk.Route.TH
@@ -63,7 +64,7 @@ data AuthorizationRequest r = AuthorizationRequest
     -- ^ The type of authorization grant being requested. See 'AuthorizationResponseType'.
   , _authorizationRequest_clientId :: Text
     -- ^ The client application identifier, issued by the authorization server. See section <https://tools.ietf.org/html/rfc6749#section-2.2 of the spec.
-  , _authorizationRequest_redirectUri :: Maybe (R OAuth -> R r)
+  , _authorizationRequest_redirectUri :: Maybe (R OAuth -> URI)
     -- ^ The client application's callback URI, where it expects to receive the authorization code. See section <https://tools.ietf.org/html/rfc6749#section-3.1.2 3.1.2> of the spec. The @r@ represents the client application's route type, of which the OAuth route will be a sub-route.
   , _authorizationRequest_scope :: [Text]
     -- ^ See section <https://tools.ietf.org/html/rfc6749#section-3.3 3.3>, "Access Token Scope"
@@ -76,11 +77,9 @@ data AuthorizationRequest r = AuthorizationRequest
 -- defined in <https://tools.ietf.org/html/rfc6749#section-4.1.1 4.1.1> of the specification.
 -- This does not insert a leading @?@.
 authorizationRequestParams
-  :: Text -- ^ Base url
-  -> Encoder Identity Identity (R (FullRoute br a)) PageName
-  -> AuthorizationRequest br
+  :: AuthorizationRequest br
   -> Text
-authorizationRequestParams route enc ar = encode (queryParametersTextEncoder @Identity @Identity) $
+authorizationRequestParams ar = encode (queryParametersTextEncoder @Identity @Identity) $
   Map.toList $ fmap Just $ mconcat
     [ Map.singleton "response_type" $ case _authorizationRequest_responseType ar of
         AuthorizationResponseType_Code -> "code"
@@ -88,8 +87,8 @@ authorizationRequestParams route enc ar = encode (queryParametersTextEncoder @Id
     , Map.singleton "client_id" (_authorizationRequest_clientId ar)
     , case _authorizationRequest_redirectUri ar of
         Nothing -> Map.empty
-        Just r -> Map.singleton "redirect_uri" $
-          route <> renderBackendRoute enc (r $ OAuth_RedirectUri :/ Nothing)
+        Just renderRoute -> Map.singleton "redirect_uri" $ T.pack $
+          uriToString id (renderRoute $ OAuth_RedirectUri :/ Nothing) ""
     , case _authorizationRequest_scope ar of
         [] -> Map.empty
         xs -> Map.singleton "scope" $ T.intercalate " " xs
@@ -101,12 +100,10 @@ authorizationRequestParams route enc ar = encode (queryParametersTextEncoder @Id
 -- | Render the authorization request
 authorizationRequestHref
   :: Text -- ^ API request url
-  -> Text -- ^ Base application route url
-  -> Encoder Identity Identity (R (FullRoute br a)) PageName -- ^ Backend route encoder
   -> AuthorizationRequest br
   -> Text -- ^ Authorization grant request endpoint with query string
-authorizationRequestHref reqUrl appUrl enc ar =
-  reqUrl <> "?" <> authorizationRequestParams appUrl enc ar
+authorizationRequestHref reqUrl ar =
+  reqUrl <> "?" <> authorizationRequestParams ar
 
 -- | Parameters that the authorization server is expected to provide when granting
 -- an authorization code request. See section <https://tools.ietf.org/html/rfc6749#section-4.1.2 4.1.2>
