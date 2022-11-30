@@ -21,7 +21,7 @@ library
                   , Obelisk.OAuth.Frontend.Command
 
   -- other-extensions:
-  build-depends:    base >=4.11 && <4.13
+  build-depends:    base >=4.11 && <=4.15
                   , obelisk-oauth-common
                   , obelisk-route
                   , reflex
