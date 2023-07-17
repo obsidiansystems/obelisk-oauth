@@ -10,7 +10,6 @@ copyright: 2019 Obsidian Systems LLC
 maintainer: maintainer@obsidian.systems
 category: Web
 build-type: Simple
-extra-source-files: CHANGELOG.md
 
 library
   exposed-modules: Obelisk.OAuth.Authorization
