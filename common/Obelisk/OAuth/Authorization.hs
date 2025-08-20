@@ -24,6 +24,7 @@ import Prelude hiding ((.))
 import Control.Categorical.Bifunctor (first)
 import Control.Category ((.))
 import Control.Category.Monoidal (coidl)
+import Control.Monad
 import Control.Monad.Error.Class (MonadError)
 import Data.Functor.Identity (Identity(..))
 import Data.Map (Map)
@@ -71,6 +72,8 @@ data AuthorizationRequest r = AuthorizationRequest
     -- ^ See section <https://tools.ietf.org/html/rfc6749#section-3.3 3.3>, "Access Token Scope"
   , _authorizationRequest_state :: Maybe Text
     -- ^ This value will be returned to the client application when the resource server redirects the user to the redirect URI. See section <https://tools.ietf.org/html/rfc6749#section-10.12 10.12>.
+  , _authorizationRequest_audience :: Maybe Text
+  -- ^ Part of RFC8693. See <https://www.rfc-editor.org/rfc/rfc8693.html#section-2.1>.
   }
   deriving (Generic)
 
@@ -96,6 +99,9 @@ authorizationRequestParams ar = encode (queryParametersTextEncoder @Identity @Id
     , case _authorizationRequest_state ar of
         Nothing -> Map.empty
         Just s -> Map.singleton "state" s
+    , case _authorizationRequest_audience ar of
+        Nothing -> Map.empty
+        Just aud -> Map.singleton "audience" aud
     ]
 
 -- | Render the authorization request
@@ -123,14 +129,19 @@ redirectUriParamsEncoder = first (unitEncoder []) . coidl . redirectUriParamsEnc
   where
     redirectUriParamsEncoder' :: Encoder check parse (Maybe RedirectUriParams) (Map Text (Maybe Text))
     redirectUriParamsEncoder' = unsafeMkEncoder $ EncoderImpl
-      { _encoderImpl_decode = \m -> case (Map.lookup "code" m, Map.lookup "state" m) of
-          (Just (Just c), Just s) -> return $ Just $ RedirectUriParams c s
-          (Just (Just c), Nothing) -> return $ Just $ RedirectUriParams c Nothing
-          _ -> return Nothing
+      { _encoderImpl_decode = \m ->
+        let
+          state = join $ Map.lookup "state" m
+        in
+          case Map.lookup "code" m of
+            Just (Just c) -> return $ Just $ RedirectUriParams c state
+            _ -> return Nothing
       , _encoderImpl_encode = \case
-        Just (RedirectUriParams code state) -> Map.fromList $ ("code", Just code) : case state of
-          Nothing -> []
-          Just s -> [("state", Just s)]
+        Just (RedirectUriParams code state) ->
+          Map.fromList
+            [ ("code", Just code)
+            , ("state", state)
+            ]
         Nothing -> Map.empty
       }
 
