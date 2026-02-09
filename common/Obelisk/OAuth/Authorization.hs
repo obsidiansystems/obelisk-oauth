@@ -150,6 +150,8 @@ redirectUriParamsEncoder = first (unitEncoder []) . coidl . redirectUriParamsEnc
 data OAuth :: * -> * where
   OAuth_RedirectUri :: OAuth (Maybe RedirectUriParams)
 
+deriveRouteComponent ''OAuth
+
 -- | The 'Encoder' of the 'OAuth' route. This should be used by the client app's backend
 -- route encoder.
 oauthRouteEncoder
@@ -157,5 +159,3 @@ oauthRouteEncoder
   => Encoder check parse (R OAuth) PageName
 oauthRouteEncoder = pathComponentEncoder $ \case
   OAuth_RedirectUri -> PathSegment "redirect" redirectUriParamsEncoder
-
-deriveRouteComponent ''OAuth
