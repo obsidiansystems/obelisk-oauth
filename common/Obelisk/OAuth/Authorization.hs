@@ -13,6 +13,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ConstraintKinds #-}
+
 {-|
 Description: Implements the authorization grant request workflow described in <https://tools.ietf.org/html/rfc6749 RFC 6749>.
 -}
